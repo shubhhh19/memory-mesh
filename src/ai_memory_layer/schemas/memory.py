@@ -14,7 +14,7 @@ class MemorySearchParams(BaseModel):
     conversation_id: str | None = None
     query: str = Field(..., min_length=1)
     top_k: int = Field(default=5, ge=1, le=20)
-    importance_min: float = Field(default=0.0, ge=0.0, le=1.0)
+    importance_min: float | None = Field(default=None, ge=0.0, le=1.0)
     candidate_limit: int = Field(default=200, ge=1, le=1000)
 
 

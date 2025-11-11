@@ -1,10 +1,14 @@
 """Configuration for the AI Memory Layer service."""
 
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+from sqlalchemy.engine.url import URL
+
+_OVERRIDES: dict[str, Any] = {}
 
 
 class ImportanceWeights(BaseModel):
@@ -35,6 +39,7 @@ class Settings(BaseSettings):
 
     app_name: str = "AI Memory Layer"
     environment: str = Field(default="local", description="Deployment environment name")
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
     database_url: str = Field(
         default="sqlite+aiosqlite:///./memory_layer.db", alias="DATABASE_URL"
@@ -59,9 +64,45 @@ class Settings(BaseSettings):
     healthcheck_timeout_seconds: float = Field(
         default=2.0, alias="HEALTHCHECK_TIMEOUT_SECONDS"
     )
+    metrics_enabled: bool = Field(default=True, alias="ENABLE_METRICS")
+    api_keys: list[str] = Field(default_factory=list, alias="API_KEYS")
+
+    @field_validator("api_keys", mode="before")
+    @classmethod
+    def _split_api_keys(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    def sync_database_url(self) -> str:
+        """Return sync-compatible database URL for Alembic/migrations."""
+        url: URL = make_url(self.database_url)
+        if url.drivername.endswith("+asyncpg"):
+            url = url.set(drivername=url.drivername.replace("+asyncpg", "+psycopg"))
+        elif url.drivername.endswith("+aiosqlite"):
+            url = url.set(drivername="sqlite")
+        return str(url)
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return cached settings instance."""
-    return Settings()
+    settings = Settings()
+    if _OVERRIDES:
+        return settings.model_copy(update=_OVERRIDES)
+    return settings
+
+
+def override_settings(**overrides: Any) -> Settings:
+    """Apply runtime overrides (primarily for testing)."""
+    global _OVERRIDES
+    _OVERRIDES = overrides
+    get_settings.cache_clear()
+    return get_settings()
+
+
+def reset_overrides() -> None:
+    """Reset any runtime overrides."""
+    global _OVERRIDES
+    _OVERRIDES = {}
+    get_settings.cache_clear()

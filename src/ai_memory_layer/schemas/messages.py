@@ -19,14 +19,14 @@ class MessageCreate(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     tenant_id: str
     conversation_id: str
     role: str
     content: str
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = Field(alias="message_metadata")
     importance_score: float | None
     embedding_status: str
     created_at: datetime

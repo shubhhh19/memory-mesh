@@ -17,12 +17,23 @@ Deterministic backend memory service for conversational AI systems. The service 
    cp .env.example .env
    ```
    Update connection strings, embedding dimensions, and feature toggles.
-3. **Run the API**
+3. **Create database & run migrations**
+   ```bash
+   alembic upgrade head
+   ```
+4. **Run the API**
    ```bash
    uvicorn ai_memory_layer.main:app --reload
    ```
-4. **Explore Docs**
+5. **Explore Docs**
    Visit `http://localhost:8000/docs` for the OpenAPI spec.
+
+### Docker Compose
+Use the bundled Postgres + API stack:
+```bash
+docker compose up --build
+```
+The API listens on `http://localhost:8000` and pgvector-backed Postgres on `5432`.
 
 ## Key Endpoints
 - `POST /v1/messages` – Ingest user or assistant messages, compute embeddings, persist metadata.
@@ -37,10 +48,17 @@ Deterministic backend memory service for conversational AI systems. The service 
 - **Extensible scoring:** Importance and retrieval weights are configurable per tenant or deployment.
 - **Retention workflow:** Scheduler-friendly service with dry-run support for policy verification.
 
+## Security & Observability
+- **API Keys:** Set `MEMORY_API_KEYS` (comma-delimited) to require the `x-api-key` header on every endpoint except health/metrics.
+- **Structured Logging:** `structlog` JSON logs with configurable `MEMORY_LOG_LEVEL`.
+- **Metrics:** Prometheus-compatible metrics at `/metrics`, automatically instrumented via middleware.
+- **Health Endpoint:** `/v1/admin/health` returns status, latency, uptime, version, and environment metadata.
+
 ## Development Scripts
 - `make format` – Run Ruff formatting.
 - `make lint` – Run Ruff + mypy.
-- `make test` – Execute pytest suite.
+- `make test` – Execute pytest suite (unit + integration).
+- `alembic upgrade head` – Apply database migrations.
 
 ## Next Steps
 - Connect to a real Postgres instance with pgvector enabled.

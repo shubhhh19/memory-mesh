@@ -55,9 +55,10 @@ class MemoryRetriever:
         scored: list[RetrievedMemory] = []
         now = datetime.now(timezone.utc)
         for message in candidates:
-            if not message.embedding:
+            if message.embedding is None:
                 continue
-            similarity = cosine_similarity(query_embedding, message.embedding)
+            embedding = list(message.embedding)
+            similarity = cosine_similarity(query_embedding, embedding)
             age_seconds = (now - message.created_at.replace(tzinfo=timezone.utc)).total_seconds()
             decay = math.exp(-age_seconds / (60 * 60 * 24 * 7))  # 1-week half-life
             importance = message.importance_score or 0.0

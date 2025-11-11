@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_memory_layer.database import get_session
 from ai_memory_layer.schemas.admin import HealthResponse, RetentionRunRequest, RetentionRunResponse
+from ai_memory_layer.security import require_api_key
+from ai_memory_layer.services.health import HealthService
 from ai_memory_layer.services.retention import RetentionService
 
 router = APIRouter()
@@ -20,6 +21,7 @@ retention_service = RetentionService()
 async def run_retention(
     payload: RetentionRunRequest,
     session: AsyncSession = Depends(get_session),
+    _: str | None = Depends(require_api_key),
 ) -> RetentionRunResponse:
     if not payload.actions:
         raise HTTPException(
@@ -28,6 +30,7 @@ async def run_retention(
     result = await retention_service.run(
         session,
         tenant_id=payload.tenant_id,
+        actions=set(payload.actions),
         dry_run=payload.dry_run,
     )
     return RetentionRunResponse(
@@ -38,19 +41,17 @@ async def run_retention(
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health(session: AsyncSession = Depends(get_session)) -> HealthResponse:
-    status_code = "ok"
-    db_status = "ok"
-    notes = None
-    try:
-        await session.execute(text("SELECT 1"))
-    except Exception as exc:  # pragma: no cover - network/db failures
-        db_status = "down"
-        status_code = "degraded"
-        notes = str(exc)
+async def health(request: Request) -> HealthResponse:
+    start_time = getattr(request.app.state, "start_time", datetime.now(timezone.utc))
+    service = HealthService(start_time=start_time)
+    report = await service.build_report()
     return HealthResponse(
-        status=status_code,
-        database=db_status,  # type: ignore[arg-type]
-        timestamp=datetime.now(timezone.utc),
-        notes=notes,
+        status=report.status,
+        database=report.database,  # type: ignore[arg-type]
+        timestamp=report.timestamp,
+        latency_ms=report.latency_ms,
+        uptime_seconds=report.uptime_seconds,
+        environment=report.environment,
+        version=report.version,
+        notes=report.notes,
     )

@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
 from ai_memory_layer import __version__
 from ai_memory_layer.config import get_settings
 from ai_memory_layer.database import init_engine
+from ai_memory_layer.logging import configure_logging
+from ai_memory_layer.metrics import MetricsMiddleware, router as metrics_router
 from ai_memory_layer.routes import api_router
+
+configure_logging()
+START_TIME = datetime.now(timezone.utc)
 
 
 @asynccontextmanager
@@ -25,7 +31,11 @@ def create_app() -> FastAPI:
         version=__version__,
         lifespan=lifespan,
     )
+    if settings.metrics_enabled:
+        app.add_middleware(MetricsMiddleware)
+        app.include_router(metrics_router, tags=["metrics"])
     app.include_router(api_router)
+    app.state.start_time = START_TIME
     return app
 
 

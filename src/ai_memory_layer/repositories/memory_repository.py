@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -31,7 +31,7 @@ class MemoryRepository:
             conversation_id=conversation_id,
             role=role,
             content=content,
-            metadata=metadata,
+            message_metadata=metadata,
         )
         session.add(message)
         await session.flush()
@@ -53,7 +53,7 @@ class MemoryRepository:
                 embedding=embedding,
                 importance_score=importance_score,
                 embedding_status=status,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(timezone.utc),
             )
             .returning(Message)
         )
@@ -79,7 +79,7 @@ class MemoryRepository:
         )
         if conversation_id:
             stmt = stmt.where(Message.conversation_id == conversation_id)
-        if importance_min:
+        if importance_min is not None:
             stmt = stmt.where(Message.importance_score >= importance_min)
         stmt = stmt.order_by(Message.created_at.desc()).limit(limit)
         result = await session.execute(stmt)
@@ -112,7 +112,7 @@ class MemoryRepository:
             policy.importance_threshold = importance_threshold
             policy.max_items = max_items
             policy.delete_after_days = delete_after_days
-            policy.updated_at = datetime.utcnow()
+            policy.updated_at = datetime.now(timezone.utc)
         await session.flush()
         return policy
 
@@ -131,7 +131,7 @@ class MemoryRepository:
         older_than_days: int,
         importance_threshold: float,
     ) -> Sequence[Message]:
-        cutoff = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
         stmt = select(Message).where(
             Message.tenant_id == tenant_id,
             Message.archived.is_(False),
@@ -154,7 +154,7 @@ class MemoryRepository:
                 conversation_id=message.conversation_id,
                 role=message.role,
                 content=message.content,
-                metadata=message.metadata,
+                metadata=message.message_metadata,
                 importance_score=message.importance_score,
                 archive_reason=reason,
             )
@@ -167,7 +167,7 @@ class MemoryRepository:
     async def delete_archived(
         self, session: AsyncSession, *, older_than_days: int, tenant_id: str
     ) -> int:
-        cutoff = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
         stmt = (
             select(ArchivedMessage)
             .where(

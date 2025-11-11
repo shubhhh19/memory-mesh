@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_memory_layer.database import get_session
 from ai_memory_layer.schemas.memory import MemorySearchParams, MemorySearchResponse
+from ai_memory_layer.security import require_api_key
 from ai_memory_layer.services.message_service import MessageService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_key)])
 service = MessageService()
 
 
@@ -19,7 +20,7 @@ async def search_memories(
     query: str,
     conversation_id: str | None = None,
     top_k: int = 5,
-    importance_min: float = 0.0,
+    importance_min: float | None = None,
     candidate_limit: int = 200,
     session: AsyncSession = Depends(get_session),
 ) -> MemorySearchResponse:

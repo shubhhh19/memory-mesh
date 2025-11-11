@@ -27,8 +27,10 @@ class RetentionService:
         session: AsyncSession,
         *,
         tenant_id: str,
+        actions: set[str] | None = None,
         dry_run: bool = False,
     ) -> RetentionResult:
+        actions = actions or {"archive", "delete"}
         settings = get_settings()
         policy = await self.repository.load_policy(session, tenant_id)
         if policy is None:
@@ -50,15 +52,18 @@ class RetentionService:
 
         archived = 0
         deleted = 0
-        if not dry_run and candidates:
+        if not dry_run and candidates and "archive" in actions:
             archived = await self.repository.move_to_archive(
                 session, messages=candidates, reason="policy"
             )
-        if not dry_run:
+        if not dry_run and "delete" in actions:
             deleted = await self.repository.delete_archived(
                 session,
                 older_than_days=policy.delete_after_days,
                 tenant_id=tenant_id,
             )
         await session.commit()
-        return RetentionResult(archived=archived if not dry_run else 0, deleted=deleted)
+        return RetentionResult(
+            archived=archived if (not dry_run and "archive" in actions) else 0,
+            deleted=deleted if (not dry_run and "delete" in actions) else 0,
+        )

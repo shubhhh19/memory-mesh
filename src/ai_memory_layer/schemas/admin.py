@@ -24,4 +24,8 @@ class HealthResponse(BaseModel):
     status: Literal["ok", "degraded", "down"]
     database: Literal["ok", "down"]
     timestamp: datetime
+    latency_ms: float | None = None
+    uptime_seconds: float
+    environment: str
+    version: str
     notes: str | None = None

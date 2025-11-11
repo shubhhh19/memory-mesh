@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_memory_layer.database import get_session
 from ai_memory_layer.schemas.messages import MessageCreate, MessageResponse
+from ai_memory_layer.security import require_api_key
 from ai_memory_layer.services.message_service import MessageService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_key)])
 service = MessageService()
 
 
