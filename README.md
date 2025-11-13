@@ -32,6 +32,7 @@ Deterministic backend memory service for conversational AI systems. The service 
 Use the bundled Postgres + API stack:
 ```bash
 docker compose up --build
+docker compose exec api alembic upgrade head
 ```
 The API listens on `http://localhost:8000` and pgvector-backed Postgres on `5432`.
 
@@ -48,16 +49,22 @@ The API listens on `http://localhost:8000` and pgvector-backed Postgres on `5432
 - **Extensible scoring:** Importance and retrieval weights are configurable per tenant or deployment.
 - **Retention workflow:** Scheduler-friendly service with dry-run support for policy verification.
 
+## Embeddings Without Paid Providers
+- **Default Provider:** `sentence-transformers/all-MiniLM-L6-v2` (HuggingFace, Apache 2.0 license). Set via `MEMORY_EMBEDDING_PROVIDER=sentence_transformer`.
+- **Async Processing:** Toggle `MEMORY_ASYNC_EMBEDDINGS=true` to offload embedding computation to background tasks that update the message after initial persistence.
+- **Fallback:** Set `MEMORY_EMBEDDING_PROVIDER=mock` for deterministic, zero-download vectors (used automatically in tests).
+
 ## Security & Observability
 - **API Keys:** Set `MEMORY_API_KEYS` (comma-delimited) to require the `x-api-key` header on every endpoint except health/metrics.
 - **Structured Logging:** `structlog` JSON logs with configurable `MEMORY_LOG_LEVEL`.
 - **Metrics:** Prometheus-compatible metrics at `/metrics`, automatically instrumented via middleware.
 - **Health Endpoint:** `/v1/admin/health` returns status, latency, uptime, version, and environment metadata.
+- **Retention Scheduler:** Configure `MEMORY_RETENTION_SCHEDULE_SECONDS` plus `MEMORY_RETENTION_TENANTS=tenant_a,tenant_b` to enable auto-archival loops at startup.
 
 ## Development Scripts
 - `make format` – Run Ruff formatting.
 - `make lint` – Run Ruff + mypy.
-- `make test` – Execute pytest suite (unit + integration).
+- `make test` – Execute pytest suite (unit + integration + e2e).
 - `alembic upgrade head` – Apply database migrations.
 
 ## Next Steps

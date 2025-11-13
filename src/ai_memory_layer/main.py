@@ -13,15 +13,22 @@ from ai_memory_layer.database import init_engine
 from ai_memory_layer.logging import configure_logging
 from ai_memory_layer.metrics import MetricsMiddleware, router as metrics_router
 from ai_memory_layer.routes import api_router
+from ai_memory_layer.scheduler import RetentionScheduler
 
 configure_logging()
 START_TIME = datetime.now(timezone.utc)
+SCHEDULER: RetentionScheduler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_engine()
+    global SCHEDULER  # noqa: PLW0602
+    SCHEDULER = RetentionScheduler()
+    await SCHEDULER.start()
     yield
+    if SCHEDULER:
+        await SCHEDULER.stop()
 
 
 def create_app() -> FastAPI:

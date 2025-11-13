@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_memory_layer.models.memory import ArchivedMessage, Message, RetentionPolicy
+from ai_memory_layer.models.memory import ArchivedMessage, EmbeddingJob, Message, RetentionPolicy
 
 
 class MemoryRepository:
@@ -75,7 +75,9 @@ class MemoryRepository:
         limit: int,
     ) -> Sequence[Message]:
         stmt: Select[tuple[Message]] = select(Message).where(
-            Message.tenant_id == tenant_id, Message.archived.is_(False)
+            Message.tenant_id == tenant_id,
+            Message.archived.is_(False),
+            Message.embedding_status == "completed",
         )
         if conversation_id:
             stmt = stmt.where(Message.conversation_id == conversation_id)
@@ -84,6 +86,31 @@ class MemoryRepository:
         stmt = stmt.order_by(Message.created_at.desc()).limit(limit)
         result = await session.execute(stmt)
         return result.scalars().all()
+
+    async def enqueue_embedding_job(
+        self,
+        session: AsyncSession,
+        message_id: UUID,
+    ) -> EmbeddingJob:
+        job = EmbeddingJob(message_id=message_id, status="pending")
+        session.add(job)
+        await session.flush()
+        return job
+
+    async def update_embedding_job(
+        self,
+        session: AsyncSession,
+        message_id: UUID,
+        *,
+        status: str,
+        error: str | None = None,
+    ) -> None:
+        stmt = (
+            update(EmbeddingJob)
+            .where(EmbeddingJob.message_id == message_id)
+            .values(status=status, last_error=error, updated_at=datetime.now(timezone.utc))
+        )
+        await session.execute(stmt)
 
     async def upsert_retention_policy(
         self,

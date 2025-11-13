@@ -53,6 +53,16 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         yield session
 
 
+@asynccontextmanager
+async def session_scope() -> AsyncIterator[AsyncSession]:
+    """Context manager usable outside FastAPI dependency injection."""
+    if SessionFactory is None:
+        await init_engine()
+    assert SessionFactory is not None  # nosec - guarded above
+    async with SessionFactory() as session:
+        yield session
+
+
 async def check_database_health() -> tuple[bool, float | None]:
     """Ping the database and return (healthy, latency seconds)."""
     if engine is None:

@@ -47,19 +47,25 @@ class Settings(BaseSettings):
     sql_echo: bool = Field(default=False, alias="SQL_ECHO")
 
     embedding_dimensions: int = Field(default=1536, alias="EMBEDDING_DIMENSIONS")
-    embedding_provider: Literal["mock", "openai", "azure_openai"] = Field(
-        default="mock", alias="EMBEDDING_PROVIDER"
+    embedding_provider: Literal["mock", "sentence_transformer"] = Field(
+        default="sentence_transformer", alias="EMBEDDING_PROVIDER"
+    )
+    embedding_model_name: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2", alias="EMBEDDING_MODEL_NAME"
     )
     max_results: int = Field(default=8, alias="MAX_RESULTS")
     importance_weights: ImportanceWeights = Field(
         default_factory=ImportanceWeights, alias="IMPORTANCE_WEIGHTS"
     )
+    async_embeddings: bool = Field(default=False, alias="ASYNC_EMBEDDINGS")
 
     retention_max_age_days: int = Field(default=30, alias="RETENTION_MAX_AGE_DAYS")
     retention_importance_threshold: float = Field(
         default=0.35, alias="RETENTION_IMPORTANCE_THRESHOLD"
     )
     retention_delete_after_days: int = Field(default=90, alias="RETENTION_DELETE_AFTER_DAYS")
+    retention_schedule_seconds: int = Field(default=0, alias="RETENTION_SCHEDULE_SECONDS")
+    retention_tenants: list[str] = Field(default_factory=list, alias="RETENTION_TENANTS")
 
     healthcheck_timeout_seconds: float = Field(
         default=2.0, alias="HEALTHCHECK_TIMEOUT_SECONDS"
@@ -70,6 +76,13 @@ class Settings(BaseSettings):
     @field_validator("api_keys", mode="before")
     @classmethod
     def _split_api_keys(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("retention_tenants", mode="before")
+    @classmethod
+    def _split_tenants(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value

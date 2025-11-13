@@ -83,3 +83,13 @@ def settings_override() -> Callable[..., Any]:
 
     yield _override
     settings_module.reset_overrides()
+
+
+@pytest.fixture(autouse=True)
+def _default_settings(settings_override):
+    return settings_override(
+        embedding_provider="mock",
+        async_embeddings=False,
+        retention_schedule_seconds=0,
+        retention_tenants=[],
+    )
