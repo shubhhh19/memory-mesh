@@ -10,3 +10,4 @@ async def test_health_endpoint(client: AsyncClient):
     assert data["status"] in {"ok", "degraded"}
     assert "uptime_seconds" in data
     assert "version" in data
+    assert data["embedding"] in {"ok", "failed"}

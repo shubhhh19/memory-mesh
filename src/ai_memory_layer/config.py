@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     )
     metrics_enabled: bool = Field(default=True, alias="ENABLE_METRICS")
     api_keys: list[str] = Field(default_factory=list, alias="API_KEYS")
+    allowed_origins: list[str] = Field(default_factory=lambda: ["*"], alias="ALLOWED_ORIGINS")
+    global_rate_limit: str = Field(default="200/minute", alias="GLOBAL_RATE_LIMIT")
+    request_timeout_seconds: int = Field(default=15, alias="REQUEST_TIMEOUT_SECONDS")
 
     @field_validator("api_keys", mode="before")
     @classmethod
@@ -86,6 +89,13 @@ class Settings(BaseSettings):
     @field_validator("retention_tenants", mode="before")
     @classmethod
     def _split_tenants(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value

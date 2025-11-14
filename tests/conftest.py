@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import sessionmaker
 
 from ai_memory_layer import config as settings_module
+from ai_memory_layer.rate_limit import reset_rate_limiter_cache
 from ai_memory_layer.database import Base, get_session
 from ai_memory_layer.main import create_app
 
@@ -79,10 +80,12 @@ def settings_override() -> Callable[..., Any]:
     """Override settings via environment variables within a test."""
 
     def _override(**overrides: Any):
+        reset_rate_limiter_cache()
         return settings_module.override_settings(**overrides)
 
     yield _override
     settings_module.reset_overrides()
+    reset_rate_limiter_cache()
 
 
 @pytest.fixture(autouse=True)
@@ -92,4 +95,7 @@ def _default_settings(settings_override):
         async_embeddings=False,
         retention_schedule_seconds=0,
         retention_tenants=[],
+        allowed_origins="*",
+        global_rate_limit="200/minute",
+        request_timeout_seconds=30,
     )

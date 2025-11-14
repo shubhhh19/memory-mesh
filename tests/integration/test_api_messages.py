@@ -14,6 +14,7 @@ async def test_create_and_search_message(client: AsyncClient):
     response = await client.post("/v1/messages", json=payload)
     assert response.status_code == 202
     message_id = response.json()["id"]
+    assert "x-request-id" in response.headers
 
     get_response = await client.get(f"/v1/messages/{message_id}")
     assert get_response.status_code == 200

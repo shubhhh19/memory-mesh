@@ -12,6 +12,7 @@ except ImportError:  # pragma: no cover
     structlog = None  # type: ignore[assignment]
 
 from ai_memory_layer.config import get_settings
+from ai_memory_layer.middleware import request_id_ctx_var
 
 
 def configure_logging() -> None:
@@ -30,6 +31,7 @@ def configure_logging() -> None:
         processors=[
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.add_log_level,
+            _inject_request_id,
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
@@ -51,3 +53,10 @@ def get_logger(**kwargs: Any):
     if kwargs:
         return logger.bind(**kwargs)
     return logger
+
+
+def _inject_request_id(logger, method_name, event_dict):
+    request_id = request_id_ctx_var.get()
+    if request_id:
+        event_dict["request_id"] = request_id
+    return event_dict

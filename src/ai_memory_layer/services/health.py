@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from ai_memory_layer import __version__
 from ai_memory_layer.config import get_settings
 from ai_memory_layer.database import check_database_health
+from ai_memory_layer.services.embedding import build_embedding_service
 
 
 @dataclass
@@ -20,6 +21,7 @@ class HealthReport:
     version: str
     timestamp: datetime
     notes: str | None = None
+    embedding: str = "unknown"
 
 
 class HealthService:
@@ -32,7 +34,13 @@ class HealthService:
         settings = get_settings()
         db_ok, latency = await check_database_health()
         latency_ms = latency * 1000 if latency is not None else None
-        status = "ok" if db_ok else "degraded"
+        embed_status = "ok"
+        try:
+            embedder = build_embedding_service(settings.embedding_provider)
+            await embedder.embed("healthcheck")
+        except Exception:
+            embed_status = "failed"
+        status = "ok" if db_ok and embed_status == "ok" else "degraded"
         uptime = (datetime.now(timezone.utc) - self.start_time).total_seconds()
         return HealthReport(
             status=status,
@@ -42,4 +50,5 @@ class HealthService:
             environment=settings.environment,
             version=__version__,
             timestamp=datetime.now(timezone.utc),
+             embedding=embed_status,
         )

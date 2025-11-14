@@ -28,4 +28,5 @@ class HealthResponse(BaseModel):
     uptime_seconds: float
     environment: str
     version: str
+    embedding: Literal["ok", "failed"] | str = "unknown"
     notes: str | None = None

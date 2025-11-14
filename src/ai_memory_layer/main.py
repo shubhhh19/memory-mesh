@@ -6,11 +6,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from ai_memory_layer import __version__
 from ai_memory_layer.config import get_settings
 from ai_memory_layer.database import init_engine
+from ai_memory_layer.errors import register_exception_handlers
 from ai_memory_layer.logging import configure_logging
+from ai_memory_layer.middleware import RequestIDMiddleware, TimeoutMiddleware
 from ai_memory_layer.metrics import MetricsMiddleware, router as metrics_router
 from ai_memory_layer.routes import api_router
 from ai_memory_layer.scheduler import RetentionScheduler
@@ -38,6 +41,16 @@ def create_app() -> FastAPI:
         version=__version__,
         lifespan=lifespan,
     )
+    register_exception_handlers(app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(TimeoutMiddleware, timeout=settings.request_timeout_seconds)
     if settings.metrics_enabled:
         app.add_middleware(MetricsMiddleware)
         app.include_router(metrics_router, tags=["metrics"])

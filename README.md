@@ -60,6 +60,8 @@ The API listens on `http://localhost:8000` and pgvector-backed Postgres on `5432
 - **Metrics:** Prometheus-compatible metrics at `/metrics`, automatically instrumented via middleware.
 - **Health Endpoint:** `/v1/admin/health` returns status, latency, uptime, version, and environment metadata.
 - **Retention Scheduler:** Configure `MEMORY_RETENTION_SCHEDULE_SECONDS` plus `MEMORY_RETENTION_TENANTS=tenant_a,tenant_b` to enable auto-archival loops at startup.
+- **Rate Limiting:** Powered by SlowAPI; default `MEMORY_GLOBAL_RATE_LIMIT=200/minute`. Adjust per route as needed.
+- **CORS & Timeouts:** `MEMORY_ALLOWED_ORIGINS` controls browser access; `MEMORY_REQUEST_TIMEOUT_SECONDS` enforces hard per-request ceilings. Every response carries an `x-request-id` header for tracing.
 
 ## Development Scripts
 - `make format` – Run Ruff formatting.

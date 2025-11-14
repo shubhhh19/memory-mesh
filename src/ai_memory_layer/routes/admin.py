@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai_memory_layer.database import get_session
 from ai_memory_layer.schemas.admin import HealthResponse, RetentionRunRequest, RetentionRunResponse
 from ai_memory_layer.security import require_api_key
+from ai_memory_layer.rate_limit import rate_limit_dependency
 from ai_memory_layer.services.health import HealthService
 from ai_memory_layer.services.retention import RetentionService
 
@@ -22,6 +23,7 @@ async def run_retention(
     payload: RetentionRunRequest,
     session: AsyncSession = Depends(get_session),
     _: str | None = Depends(require_api_key),
+    __: None = Depends(rate_limit_dependency()),
 ) -> RetentionRunResponse:
     if not payload.actions:
         raise HTTPException(
@@ -53,5 +55,6 @@ async def health(request: Request) -> HealthResponse:
         uptime_seconds=report.uptime_seconds,
         environment=report.environment,
         version=report.version,
+        embedding=report.embedding,
         notes=report.notes,
     )

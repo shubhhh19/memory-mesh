@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_memory_layer.database import get_session
 from ai_memory_layer.schemas.memory import MemorySearchParams, MemorySearchResponse
+from ai_memory_layer.rate_limit import rate_limit_dependency
 from ai_memory_layer.security import require_api_key
 from ai_memory_layer.services.message_service import MessageService
 
@@ -23,6 +24,7 @@ async def search_memories(
     importance_min: float | None = None,
     candidate_limit: int = 200,
     session: AsyncSession = Depends(get_session),
+    _: None = Depends(rate_limit_dependency()),
 ) -> MemorySearchResponse:
     params = MemorySearchParams(
         tenant_id=tenant_id,
