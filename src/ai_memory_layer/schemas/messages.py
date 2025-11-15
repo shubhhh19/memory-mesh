@@ -10,10 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MessageCreate(BaseModel):
-    tenant_id: str = Field(..., min_length=1)
-    conversation_id: str = Field(..., min_length=1)
+    tenant_id: str = Field(..., min_length=1, max_length=64)
+    conversation_id: str = Field(..., min_length=1, max_length=128)
     role: Literal["user", "assistant", "system"]
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=100000)  # 100KB max
     metadata: dict[str, Any] | None = Field(default_factory=dict)
     importance_override: float | None = Field(default=None, ge=0.0, le=1.0)
 
