@@ -27,7 +27,22 @@ class Base(DeclarativeBase):
 
 def _build_engine() -> AsyncEngine:
     settings = get_settings()
-    return create_async_engine(settings.database_url, echo=settings.sql_echo, future=True)
+    # Configure connection pooling for production
+    engine_kwargs = {
+        "echo": settings.sql_echo,
+        "future": True,
+        "pool_pre_ping": True,  # Verify connections before using
+    }
+    # Only set pool settings for Postgres (not SQLite)
+    if "postgresql" in settings.database_url or "postgres" in settings.database_url:
+        engine_kwargs.update(
+            {
+                "pool_size": settings.database_pool_size,
+                "max_overflow": settings.database_max_overflow,
+                "pool_recycle": settings.database_pool_recycle,
+            }
+        )
+    return create_async_engine(settings.database_url, **engine_kwargs)
 
 
 engine: AsyncEngine | None = None
