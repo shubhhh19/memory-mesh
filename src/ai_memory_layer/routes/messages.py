@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_memory_layer.database import get_session
-from ai_memory_layer.rate_limit import rate_limit_dependency
+from ai_memory_layer.database import get_read_session, get_session
 from ai_memory_layer.schemas.messages import MessageCreate, MessageResponse
 from ai_memory_layer.security import require_api_key
 from ai_memory_layer.services.message_service import MessageService
+from ai_memory_layer.rate_limit import enforce_tenant_rate_limit
 
 router = APIRouter(dependencies=[Depends(require_api_key)])
 service = MessageService()
@@ -21,8 +22,8 @@ service = MessageService()
 async def create_message(
     payload: MessageCreate,
     session: AsyncSession = Depends(get_session),
-    _: None = Depends(rate_limit_dependency()),
 ) -> MessageResponse:
+    enforce_tenant_rate_limit(payload.tenant_id)
     return await service.ingest(session, payload)
 
 
@@ -30,7 +31,6 @@ async def create_message(
 async def get_message(
     message_id: str,
     session: AsyncSession = Depends(get_session),
-    _: None = Depends(rate_limit_dependency()),
 ) -> MessageResponse:
     try:
         message_uuid = UUID(message_id)

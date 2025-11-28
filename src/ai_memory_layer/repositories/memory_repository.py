@@ -97,19 +97,70 @@ class MemoryRepository:
         await session.flush()
         return job
 
+    async def claim_embedding_jobs(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int,
+        max_attempts: int,
+        retry_backoff_seconds: float,
+    ) -> Sequence[EmbeddingJob]:
+        """Claim a batch of runnable embedding jobs for processing.
+
+        Jobs that have failed will be retried up to `max_attempts` with a simple
+        time-based backoff using their updated_at timestamp.
+        """
+        now = datetime.now(timezone.utc)
+        retry_cutoff = now - timedelta(seconds=retry_backoff_seconds)
+        stmt: Select[tuple[EmbeddingJob]] = (
+            select(EmbeddingJob)
+            .where(
+                (EmbeddingJob.status == "pending")
+                | (
+                    (EmbeddingJob.status == "failed")
+                    & (EmbeddingJob.attempts < max_attempts)
+                    & (EmbeddingJob.updated_at <= retry_cutoff)
+                )
+            )
+            .order_by(EmbeddingJob.updated_at.asc())
+            .limit(limit)
+        )
+        if session.bind and session.bind.dialect.name != "sqlite":
+            stmt = stmt.with_for_update(skip_locked=True)
+        result = await session.execute(stmt)
+        jobs = result.scalars().all()
+        for job in jobs:
+            job.status = "running"
+            job.attempts += 1
+            job.updated_at = now
+        await session.flush()
+        return jobs
+
+    async def get_embedding_job(self, session: AsyncSession, job_id: UUID) -> EmbeddingJob | None:
+        stmt = select(EmbeddingJob).where(EmbeddingJob.id == job_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def update_embedding_job(
         self,
         session: AsyncSession,
-        message_id: UUID,
+        message_id: UUID | None = None,
+        job_id: UUID | None = None,
         *,
         status: str,
         error: str | None = None,
     ) -> None:
-        stmt = (
-            update(EmbeddingJob)
-            .where(EmbeddingJob.message_id == message_id)
-            .values(status=status, last_error=error, updated_at=datetime.now(timezone.utc))
+        if message_id is None and job_id is None:  # pragma: no cover - guardrail
+            raise ValueError("message_id or job_id is required")
+        stmt = update(EmbeddingJob).values(
+            status=status,
+            last_error=error,
+            updated_at=datetime.now(timezone.utc),
         )
+        if message_id is not None:
+            stmt = stmt.where(EmbeddingJob.message_id == message_id)
+        if job_id is not None:
+            stmt = stmt.where(EmbeddingJob.id == job_id)
         await session.execute(stmt)
 
     async def upsert_retention_policy(

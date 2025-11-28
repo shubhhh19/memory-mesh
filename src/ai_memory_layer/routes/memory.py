@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_memory_layer.database import get_session
+from ai_memory_layer.database import get_read_session
 from ai_memory_layer.schemas.memory import MemorySearchParams, MemorySearchResponse
-from ai_memory_layer.rate_limit import rate_limit_dependency
 from ai_memory_layer.security import require_api_key
 from ai_memory_layer.services.message_service import MessageService
+from ai_memory_layer.rate_limit import enforce_tenant_rate_limit
 
 router = APIRouter(dependencies=[Depends(require_api_key)])
 service = MessageService()
@@ -23,8 +23,7 @@ async def search_memories(
     top_k: int = 5,
     importance_min: float | None = None,
     candidate_limit: int = 200,
-    session: AsyncSession = Depends(get_session),
-    _: None = Depends(rate_limit_dependency()),
+    session: AsyncSession = Depends(get_read_session),
 ) -> MemorySearchResponse:
     params = MemorySearchParams(
         tenant_id=tenant_id,
@@ -34,4 +33,5 @@ async def search_memories(
         importance_min=importance_min,
         candidate_limit=candidate_limit,
     )
+    enforce_tenant_rate_limit(tenant_id)
     return await service.retrieve(session, params)

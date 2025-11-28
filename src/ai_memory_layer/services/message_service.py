@@ -14,6 +14,7 @@ from ai_memory_layer.models.memory import Message
 from ai_memory_layer.repositories.memory_repository import MemoryRepository
 from ai_memory_layer.schemas.messages import MessageCreate, MessageResponse
 from ai_memory_layer.schemas.memory import MemorySearchParams, MemorySearchResponse, MemorySearchResult
+from ai_memory_layer.services.cache import CacheService
 from ai_memory_layer.services.embedding import EmbeddingService, build_embedding_service
 from ai_memory_layer.services.importance import ImportanceScorer
 from ai_memory_layer.services.retrieval import MemoryRetriever, default_retriever
@@ -27,6 +28,7 @@ class MessageService:
     embedder: EmbeddingService = build_embedding_service()
     scorer: ImportanceScorer = ImportanceScorer()
     retriever: MemoryRetriever = default_retriever()
+    cache: CacheService = CacheService()
     settings: Settings = field(default_factory=get_settings)
 
     async def ingest(
@@ -43,7 +45,6 @@ class MessageService:
         if self.settings.async_embeddings:
             await self.repository.enqueue_embedding_job(session, message.id)
             await session.commit()
-            await self._schedule_embedding_job(message.id)
             return MessageResponse.model_validate(message)
 
         message = await self._apply_embedding(
@@ -60,7 +61,20 @@ class MessageService:
         session: AsyncSession,
         params: MemorySearchParams,
     ) -> MemorySearchResponse:
-        query_embedding = await self.embedder.embed(params.query)
+        cache_key = None
+        if self.cache.enabled:
+            cache_key = self.cache.search_key(
+                tenant_id=params.tenant_id,
+                conversation_id=params.conversation_id,
+                query=params.query,
+                top_k=params.top_k,
+                candidate_limit=params.candidate_limit,
+            )
+            cached = await self.cache.get(cache_key)
+            if cached:
+                return MemorySearchResponse.model_validate(cached)
+
+        query_embedding = await self._embed_text(params.query)
         candidate_limit = min(params.candidate_limit, self.settings.max_results * 10)
         top_k = min(params.top_k, self.settings.max_results)
         candidates = await self.repository.list_active_messages(
@@ -89,10 +103,13 @@ class MessageService:
             )
             for item in ranked
         ]
-        return MemorySearchResponse(
+        response = MemorySearchResponse(
             total=len(results),
             items=results,
         )
+        if cache_key:
+            await self.cache.set(cache_key, response.model_dump())
+        return response
 
     async def fetch(self, session: AsyncSession, message_id: UUID) -> MessageResponse | None:
         message = await self.repository.get_message(session, message_id)
@@ -119,7 +136,7 @@ class MessageService:
             base_importance = max(0.0, min(base_importance, 1.0))
 
         try:
-            embedding = await self.embedder.embed(content)
+            embedding = await self._embed_text(content)
             status = "completed"
             error = None
         except Exception as exc:
@@ -139,26 +156,17 @@ class MessageService:
             await self.repository.update_embedding_job(
                 session, message.id, status=status, error=error
             )
+        await self.cache.invalidate_search(message.tenant_id, message.conversation_id)
         return updated
 
-    async def _schedule_embedding_job(self, message_id: UUID) -> None:
-        if not self.settings.async_embeddings:
-            return
-        from ai_memory_layer.database import session_scope
-
-        async def worker() -> None:
-            async with session_scope() as session:
-                existing = await self.repository.get_message(session, message_id)
-                if existing is None:
-                    return
-                await self._apply_embedding(
-                    session,
-                    message=existing,
-                    content=existing.content,
-                    explicit_importance=existing.importance_score,
-                )
-                await session.commit()
-
-        import asyncio
-
-        asyncio.create_task(worker())
+    async def _embed_text(self, text: str) -> list[float]:
+        cache_key = None
+        if self.cache.enabled:
+            cache_key = self.cache.embedding_key(text)
+            cached = await self.cache.get(cache_key)
+            if cached is not None:
+                return cached
+        embedding = await self.embedder.embed(text)
+        if cache_key:
+            await self.cache.set(cache_key, embedding, ttl=self.cache.embedding_ttl)
+        return embedding

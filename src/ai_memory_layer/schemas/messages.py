@@ -6,16 +6,38 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from ai_memory_layer.utils.sanitization import MetadataValidationError, sanitize_metadata
+
+ALLOWED_TENANT_PATTERN = r"^[A-Za-z0-9_.-]+$"
 
 
 class MessageCreate(BaseModel):
-    tenant_id: str = Field(..., min_length=1, max_length=64)
-    conversation_id: str = Field(..., min_length=1, max_length=128)
+    tenant_id: str = Field(..., min_length=1, max_length=64, pattern=ALLOWED_TENANT_PATTERN)
+    conversation_id: str = Field(..., min_length=1, max_length=128, pattern=ALLOWED_TENANT_PATTERN)
     role: Literal["user", "assistant", "system"]
     content: str = Field(..., min_length=1, max_length=100000)  # 100KB max
     metadata: dict[str, Any] | None = Field(default_factory=dict)
     importance_override: float | None = Field(default=None, ge=0.0, le=1.0)
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _sanitize_metadata(cls, value: dict[str, Any] | None) -> dict[str, Any]:
+        if value is None:
+            return {}
+        try:
+            return sanitize_metadata(value)
+        except MetadataValidationError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("content")
+    @classmethod
+    def _trim_content(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("content must not be empty")
+        return cleaned
 
 
 class MessageResponse(BaseModel):

@@ -1,0 +1,32 @@
+groups:
+  - name: ai-memory-layer
+    rules:
+      - alert: HighRequestLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(aiml_request_latency_seconds_bucket[5m])) by (le)) > 0.1
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "p95 latency above 100ms"
+          description: "API p95 latency has exceeded 100ms for 5 minutes."
+
+      - alert: ElevatedErrorRate
+        expr: |
+          sum(rate(aiml_requests_total{status=~"5.."}[5m]))
+            /
+          sum(rate(aiml_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Error rate above 1%"
+          description: "5xx error rate exceeded 1% over the past 5 minutes."
+
+      - alert: HealthcheckFailing
+        expr: probe_success{job="aiml-health"} == 0
+        for: 2m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Health check failing"
+          description: "Active health check probe is failing for ai-memory-layer."

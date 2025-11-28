@@ -44,15 +44,17 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="sqlite+aiosqlite:///./memory_layer.db", alias="DATABASE_URL"
     )
+    read_replica_urls: list[str] = Field(default_factory=list, alias="READ_REPLICA_URLS")
     sql_echo: bool = Field(default=False, alias="SQL_ECHO")
     database_pool_size: int = Field(default=20, alias="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=10, alias="DATABASE_MAX_OVERFLOW")
     database_pool_recycle: int = Field(default=3600, alias="DATABASE_POOL_RECYCLE")
 
     embedding_dimensions: int = Field(default=1536, alias="EMBEDDING_DIMENSIONS")
-    embedding_provider: Literal["mock", "sentence_transformer"] = Field(
+    embedding_provider: Literal["mock", "sentence_transformer", "google_gemini"] = Field(
         default="sentence_transformer", alias="EMBEDDING_PROVIDER"
     )
+    gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
     embedding_model_name: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2", alias="EMBEDDING_MODEL_NAME"
     )
@@ -61,6 +63,12 @@ class Settings(BaseSettings):
         default_factory=ImportanceWeights, alias="IMPORTANCE_WEIGHTS"
     )
     async_embeddings: bool = Field(default=False, alias="ASYNC_EMBEDDINGS")
+    embedding_job_poll_seconds: float = Field(default=1.0, alias="EMBEDDING_JOB_POLL_SECONDS")
+    embedding_job_batch_size: int = Field(default=10, alias="EMBEDDING_JOB_BATCH_SIZE")
+    embedding_job_max_attempts: int = Field(default=3, alias="EMBEDDING_JOB_MAX_ATTEMPTS")
+    embedding_job_retry_backoff_seconds: float = Field(
+        default=5.0, alias="EMBEDDING_JOB_RETRY_BACKOFF_SECONDS"
+    )
 
     retention_max_age_days: int = Field(default=30, alias="RETENTION_MAX_AGE_DAYS")
     retention_importance_threshold: float = Field(
@@ -77,11 +85,26 @@ class Settings(BaseSettings):
     api_keys: list[str] = Field(default_factory=list, alias="API_KEYS")
     allowed_origins: list[str] = Field(default_factory=lambda: ["*"], alias="ALLOWED_ORIGINS")
     global_rate_limit: str = Field(default="200/minute", alias="GLOBAL_RATE_LIMIT")
+    tenant_rate_limit: str = Field(default="120/minute", alias="TENANT_RATE_LIMIT")
     request_timeout_seconds: int = Field(default=15, alias="REQUEST_TIMEOUT_SECONDS")
+    request_max_bytes: int = Field(default=1_048_576, alias="REQUEST_MAX_BYTES")
+    cache_enabled: bool = Field(default=True, alias="CACHE_ENABLED")
+    cache_max_items: int = Field(default=2000, alias="CACHE_MAX_ITEMS")
+    cache_search_ttl_seconds: int = Field(default=60, alias="CACHE_SEARCH_TTL_SECONDS")
+    cache_embedding_ttl_seconds: int = Field(default=3600, alias="CACHE_EMBEDDING_TTL_SECONDS")
+    circuit_failure_threshold: int = Field(default=5, alias="CIRCUIT_FAILURE_THRESHOLD")
+    circuit_recovery_seconds: int = Field(default=30, alias="CIRCUIT_RECOVERY_SECONDS")
 
     @field_validator("api_keys", mode="before")
     @classmethod
     def _split_api_keys(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("read_replica_urls", mode="before")
+    @classmethod
+    def _split_replicas(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value

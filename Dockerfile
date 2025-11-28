@@ -13,6 +13,8 @@ RUN apt-get update && \
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY alembic.ini ./
+COPY alembic ./alembic
 
 RUN pip install --upgrade pip && \
     pip install .

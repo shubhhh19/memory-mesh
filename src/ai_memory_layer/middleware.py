@@ -43,3 +43,46 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
                 status_code=504,
                 media_type="application/json",
             )
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # Remove server header for security
+        if "server" in response.headers:
+            del response.headers["server"]
+        return response
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject requests that exceed the configured payload size."""
+
+    def __init__(self, app, max_bytes: int) -> None:
+        super().__init__(app)
+        self.max_bytes = max_bytes
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and content_length.isdigit():
+            if int(content_length) > self.max_bytes:
+                return Response(
+                    content='{"detail":"Request too large"}',
+                    status_code=413,
+                    media_type="application/json",
+                )
+        else:
+            body = await request.body()
+            if len(body) > self.max_bytes:
+                return Response(
+                    content='{"detail":"Request too large"}',
+                    status_code=413,
+                    media_type="application/json",
+                )
+        return await call_next(request)
