@@ -1,258 +1,200 @@
 # AI Memory Layer
 
-**Production-ready backend service for AI chatbot conversation memory with semantic search, importance scoring, and automatic retention policies.**
+<div align="center">
 
-## 🎯 What This Does
+<img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
+<img src="https://img.shields.io/badge/version-1.0-orange" alt="Version" />
 
-Stores and retrieves conversation memories for AI systems using:
+_A production-ready backend service for AI chatbot conversation memory with semantic search, importance scoring, and automatic retention policies_
+
+</div>
+
+## Table of Contents
+
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Installation](#installation)
+- [Screenshots](#screenshots)
+- [Interesting Parts During Build](#interesting-parts-during-build)
+- [Challenges and Solutions](#challenges-and-solutions)
+- [Future Updates](#future-updates)
+- [Author](#author)
+- [License](#license)
+
+## Features
+
 - **Semantic Search**: Find relevant past messages using vector embeddings
 - **Importance Scoring**: Automatically prioritize messages by recency, role, and explicit importance
 - **Smart Retention**: Archive/delete old messages based on age and importance
 - **Rate Limiting**: Protect your API with built-in rate limiting
 - **Real Embeddings**: Google Gemini API integration for production-quality embeddings
+- **Background Processing**: Async embedding generation with job queue
+- **Monitoring**: Prometheus metrics and Grafana dashboards
+- **Multi-tenant Support**: Isolated data per tenant
 
-## 🚀 Quick Start
+## Technology Stack
 
-### Prerequisites
+### Backend
 - Python 3.11+
-- PostgreSQL with pgvector extension (or SQLite for testing)
-- Google Gemini API key (free tier available)
+- FastAPI
+- PostgreSQL with pgvector extension (or SQLite for development)
+- Redis (for caching and rate limiting)
+- Google Gemini API
+- SQLAlchemy (async ORM)
+- Alembic (database migrations)
 
-### Installation
+### Infrastructure
+- Docker & Docker Compose
+- Prometheus & Grafana (monitoring)
+- Structured logging (structlog)
 
+## Installation
+
+1. Clone the repository:
 ```bash
-# Clone the repository
 git clone <your-repo>
 cd memory-layer
-
-# Install dependencies
-pip install -e ".[dev]"
-
-# Copy environment template
-cp .env.example .env
-
-# Edit .env and add your Gemini API key
-# MEMORY_GEMINI_API_KEY=your-key-here
-# MEMORY_EMBEDDING_PROVIDER=google_gemini
 ```
 
-### Run Locally
+2. Create and activate virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
+3. Install dependencies:
+```bash
+pip install -e ".[dev]"
+```
+
+4. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+5. Initialize the database:
+```bash
+alembic upgrade head
+```
+
+6. Run the application:
 ```bash
 # Option 1: Using Docker Compose (Recommended)
 docker compose up --build
 docker compose exec api alembic upgrade head
 
 # Option 2: Local Development
-alembic upgrade head
 uvicorn ai_memory_layer.main:app --reload
-
-# API will be available at http://localhost:8000
-# API docs at http://localhost:8000/docs
 ```
 
-## 📖 How It Works
+The API will be available at http://localhost:8000
+API docs at http://localhost:8000/docs
 
-### 1. Store a Message
-```bash
-curl -X POST http://localhost:8000/v1/messages \
-  -H "Content-Type: application/json" \
-  -d '{
+## Integration
+
+See [INTEGRATION.md](INTEGRATION.md) for detailed integration examples in Python, JavaScript, Go, and more.
+
+**Quick Example (Python):**
+```python
+import requests
+
+headers = {
+    "x-api-key": "your-api-key",
+    "Content-Type": "application/json"
+}
+
+# Store a message
+response = requests.post(
+    "http://localhost:8000/v1/messages",
+    headers=headers,
+    json={
     "tenant_id": "my-app",
-    "conversation_id": "conv-123",
+        "conversation_id": "user-123",
     "role": "user",
     "content": "I love Python programming"
-  }'
+    }
+)
+
+# Search memories
+response = requests.get(
+    "http://localhost:8000/v1/memory/search",
+    headers=headers,
+    params={
+        "tenant_id": "my-app",
+        "query": "Python",
+        "top_k": 5
+    }
+)
 ```
 
-### 2. Search Memories
-```bash
-curl "http://localhost:8000/v1/memory/search?tenant_id=my-app&query=Python&top_k=5"
-```
+## Screenshots
 
-### 3. Check Health
-```bash
-curl http://localhost:8000/v1/admin/health
-```
+_Add screenshots of your API documentation, monitoring dashboards, or example responses here_
 
-## 🧪 Testing
+## Interesting Parts During Build
 
-```bash
-# Run all tests
-make test
+1. **Semantic Search Implementation**
+   - Implemented vector similarity search using pgvector extension
+   - Developed fallback mechanism for SQLite development environments
+   - Created hybrid ranking system combining similarity and importance scores
 
-# Run with coverage
-pytest --cov=src/ai_memory_layer --cov-report=html
+2. **Embedding Service Architecture**
+   - Built pluggable embedding provider system (Google Gemini, Sentence Transformers, Mock)
+   - Implemented circuit breaker pattern for resilience
+   - Added async job queue for background embedding generation
 
-# Run specific test types
-pytest tests/unit/              # Unit tests
-pytest tests/integration/       # Integration tests
-pytest tests/e2e/               # End-to-end tests
-```
+3. **Retention System**
+   - Developed automatic retention policies based on age and importance
+   - Implemented scheduled background jobs for cleanup
+   - Created archive/delete workflow with configurable thresholds
 
-## 🏗️ Architecture
+4. **Rate Limiting**
+   - Built Redis-backed rate limiting with global and per-tenant limits
+   - Implemented async rate limit checking to avoid blocking
+   - Added configurable rate limit strategies
 
-```
-Client → FastAPI → Services → Repositories → Database
-                ↓
-         Embedding Service (Google Gemini)
-```
+## Challenges and Solutions
 
-**Key Components:**
-- **Routes**: API endpoints (`/v1/messages`, `/v1/memory/search`)
-- **Services**: Business logic (message ingestion, retrieval, retention)
-- **Repositories**: Database access layer
-- **Models**: SQLAlchemy ORM models
+1. **Challenge**: Vector search performance with large datasets
+   - **Solution**: Implemented candidate limiting and hybrid ranking to balance speed and relevance
+   - Added database indexes on tenant_id, conversation_id, and importance_score
 
-## 📊 Current Status
+2. **Challenge**: Embedding generation latency
+   - **Solution**: Built async job queue system for background processing
+   - Implemented caching layer for frequently accessed embeddings
+   - Added circuit breaker to fallback to mock embeddings on failures
 
-✅ **Implemented:**
-- Message storage with embeddings
-- Semantic search with similarity ranking
-- Importance scoring (recency + role + explicit)
-- Retention policies (archive/delete)
-- Google Gemini embedding integration
-- Rate limiting (global + per-tenant) with Redis-backed storage
-- CORS configuration
-- Health checks & metrics
-- API key authentication
-- Comprehensive test suite
-- Per-tenant & global rate limiting
-- Background embedding job queue (in-process worker or standalone)
-- Monitoring dashboards & alert rules (Prometheus/Grafana)
-- Load testing helper script
-- Redis-backed cache for search/embeddings
-- Postgres/pgvector vector search (ORDER BY <->) with fallback for SQLite/dev
+3. **Challenge**: Multi-database compatibility
+   - **Solution**: Created abstraction layer for vector operations
+   - Implemented SQLite fallback for development without pgvector dependency
+   - Used Alembic migrations with conditional logic for different databases
 
-## 🔧 Configuration
+4. **Challenge**: Rate limiting at scale
+   - **Solution**: Used Redis for distributed rate limiting
+   - Implemented async rate limit checks to avoid blocking request handling
+   - Added separate limits for global and per-tenant traffic
 
-Key environment variables (see `.env.example`):
+## Future Updates
 
-```bash
-# Database
-MEMORY_DATABASE_URL=postgresql+asyncpg://user:pass@localhost/memory_layer
+1. **Planned Features**
+   - Additional embedding providers (OpenAI, Cohere)
+   - GraphQL API endpoint
+   - Webhook notifications for retention events
+   - Advanced analytics dashboard
 
-# Cache / Rate Limiting
-MEMORY_REDIS_URL=redis://localhost:6379/0   # Required in production
-MEMORY_REQUIRE_REDIS_IN_PRODUCTION=true
+2. **Planned Improvements**
+   - Enhanced search filters (date ranges, metadata queries)
+   - Batch message ingestion API
+   - Export/import functionality
+   - Multi-region deployment support
 
-# Embeddings
-MEMORY_EMBEDDING_PROVIDER=google_gemini  # or sentence_transformer, mock
-MEMORY_GEMINI_API_KEY=your-api-key-here
-MEMORY_EMBEDDING_DIMENSIONS=1536  # default; use 768 for Gemini embedding-001
-MEMORY_ASYNC_EMBEDDINGS=true  # Enable background worker
+## Author
 
-# Security
-MEMORY_API_KEYS=key1,key2,key3  # Comma-separated
-MEMORY_ALLOWED_ORIGINS=*  # Or specific domains
+**Shubh Soni**
+- GitHub: [@shubhhh19](https://github.com/shubhhh19)
+- Email: sonishubh2004@gmail.com
 
-# Rate Limiting
-MEMORY_GLOBAL_RATE_LIMIT=200/minute
-MEMORY_TENANT_RATE_LIMIT=120/minute
-
-# Notes
-# - The embeddings column accepts any configured dimension. Just keep
-#   MEMORY_EMBEDDING_DIMENSIONS in sync with your provider (e.g. 768 for Gemini).
-# - Redis-backed rate limiting and caching run fully async to avoid blocking the event loop.
-# - Set `AIML_USE_PGVECTOR_STUB=1` when running the suite on SQLite-only or sandboxed
-#   environments that cannot import the pgvector binary; production deployments
-#   should leave this unset to keep real pgvector support.
-
-# Retention
-MEMORY_RETENTION_SCHEDULE_SECONDS=86400
-MEMORY_RETENTION_TENANTS=*  # "*" runs for all tenants found
-
-# Health/Readiness
-MEMORY_HEALTH_EMBED_CHECK_ENABLED=false
-MEMORY_READINESS_EMBED_TIMEOUT_SECONDS=3.0
-```
-
-## 📚 API Reference
-
-### POST /v1/messages
-Store a new message with automatic embedding generation.
-
-**Request:**
-```json
-{
-  "tenant_id": "string",
-  "conversation_id": "string",
-  "role": "user|assistant|system",
-  "content": "string",
-  "metadata": {},
-  "importance_override": 0.8
-}
-```
-
-**Response:** `202 Accepted`
-
-### GET /v1/memory/search
-Search for relevant memories.
-
-**Query Parameters:**
-- `tenant_id` (required)
-- `query` (required)
-- `conversation_id` (optional)
-- `top_k` (default: 5)
-- `importance_min` (optional)
-
-**Response:**
-```json
-{
-  "total": 5,
-  "items": [{
-    "message_id": "uuid",
-    "score": 0.85,
-    "similarity": 0.92,
-    "content": "...",
-    "importance": 0.72
-  }]
-}
-```
-
-### GET /v1/admin/health
-Lightweight liveness (DB ping).
-
-### GET /v1/admin/readiness
-Readiness probe (DB + optional embedding provider check).
-
-### POST /v1/admin/retention/run
-Manually trigger retention job.
-
-## ⚙️ Async Embeddings
-
-- Set `MEMORY_ASYNC_EMBEDDINGS=true` to enqueue embedding generation in the background.
-- Start the worker alongside the API:
-  ```bash
-  uv run aiml-worker
-  ```
-- The API process also runs an in-process queue for small deployments; the worker keeps the job runner isolated for production.
-- Responses return `200 OK` when embeddings are computed inline, and `202 Accepted` when queued for background processing.
-
-## 🚢 Deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed production deployment guide.
-
-## 📈 Observability
-
-- Prometheus metrics at `/metrics` (request counts/latency, search stats, embedding job durations).
-- Grafana dashboard + example alert rules in `docs/monitoring/`.
-- Logs are structured (JSON) with request IDs for easy correlation.
-
-## 🧪 Load Testing
-
-Use the bundled async helper to sanity-check throughput and rate limits:
-
-```bash
-uv run python scripts/load_test.py --requests 200 --concurrency 25 --api-key <key>
-```
-
-Override `--base-url` and `--tenant-id` as needed. The script reports success rate, average latency, and p95 latency.
-
-## 📝 License
+## License
 
 MIT
-
-## 🤝 Contributing
-
-Contributions welcome! Please read contributing guidelines first.

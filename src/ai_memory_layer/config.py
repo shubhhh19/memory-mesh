@@ -7,7 +7,8 @@ from typing import Any, Literal
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict, PydanticBaseSettingsSource
+from pydantic_settings.sources import EnvSettingsSource
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 
@@ -48,7 +49,11 @@ if not os.environ.get("MEMORY_DATABASE_URL"):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="MEMORY_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="MEMORY_",
+        extra="ignore",
+        populate_by_name=True,
+    )
 
     app_name: str = "AI Memory Layer"
     environment: str = Field(default="local", description="Deployment environment name")
@@ -112,6 +117,59 @@ class Settings(BaseSettings):
     health_embed_check_enabled: bool = Field(default=False, alias="HEALTH_EMBED_CHECK_ENABLED")
     readiness_embed_timeout_seconds: float = Field(default=3.0, alias="READINESS_EMBED_TIMEOUT_SECONDS")
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ):
+        class LenientEnvSettingsSource(EnvSettingsSource):
+            """Let simple strings through so validators can parse them."""
+
+            def decode_complex_value(self, field_name, field, value):
+                try:
+                    return super().decode_complex_value(field_name, field, value)
+                except Exception:
+                    return value
+
+        return (
+            init_settings,
+            LenientEnvSettingsSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
+
+    @field_validator("importance_weights", mode="before")
+    @classmethod
+    def _parse_importance_weights(cls, value: ImportanceWeights | dict[str, Any] | str):
+        """Support comma/colon strings from .env files."""
+        if isinstance(value, str):
+            weights: dict[str, float] = {}
+            for part in value.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                if ":" not in part:
+                    raise ValueError("importance_weights must use key:value pairs")
+                key, raw = part.split(":", 1)
+                try:
+                    weights[key.strip()] = float(raw)
+                except ValueError:
+                    raise ValueError("importance_weights values must be numeric") from None
+            return weights
+        return value
+
+    @field_validator("async_embeddings", mode="before")
+    @classmethod
+    def _parse_async_embeddings(cls, value: bool | str) -> bool:
+        """Convert string boolean values to actual booleans."""
+        if isinstance(value, str):
+            return value.lower() in ("true", "1", "yes", "on")
+        return value
+
     @field_validator("api_keys", mode="before")
     @classmethod
     def _split_api_keys(cls, value: str | list[str]) -> list[str]:
@@ -147,7 +205,7 @@ class Settings(BaseSettings):
             url = url.set(drivername=url.drivername.replace("+asyncpg", "+psycopg"))
         elif url.drivername.endswith("+aiosqlite"):
             url = url.set(drivername="sqlite")
-        return str(url)
+        return url.render_as_string(hide_password=False)
 
 
 @lru_cache(maxsize=1)

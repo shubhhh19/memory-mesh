@@ -97,7 +97,6 @@ class MemoryRepository:
         limit: int,
         query_embedding: list[float],
     ) -> Sequence[Message] | None:
-        """Vector search using pgvector if available; returns None when unsupported."""
         bind = session.get_bind()
         if bind is None or bind.dialect.name != "postgresql":
             return None
@@ -138,11 +137,6 @@ class MemoryRepository:
         max_attempts: int,
         retry_backoff_seconds: float,
     ) -> Sequence[EmbeddingJob]:
-        """Claim a batch of runnable embedding jobs for processing.
-
-        Jobs that have failed will be retried up to `max_attempts` with a simple
-        time-based backoff using their updated_at timestamp.
-        """
         now = datetime.now(timezone.utc)
         retry_cutoff = now - timedelta(seconds=retry_backoff_seconds)
         stmt: Select[tuple[EmbeddingJob]] = (

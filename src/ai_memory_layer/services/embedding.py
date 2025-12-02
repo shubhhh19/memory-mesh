@@ -31,7 +31,6 @@ class EmbeddingService(Protocol):
 
 
 class CircuitBreakerEmbeddingService:
-    """Wraps an embedder with a circuit breaker and mock fallback."""
 
     def __init__(
         self,
@@ -55,7 +54,6 @@ class CircuitBreakerEmbeddingService:
 
 
 class MockEmbeddingService:
-    """Deterministic mock embedder for local dev & tests."""
 
     def __init__(self, dimensions: int | None = None) -> None:
         settings = get_settings()
@@ -70,7 +68,6 @@ class MockEmbeddingService:
 
 
 class SentenceTransformerEmbeddingService:
-    """Embedding provider backed by HuggingFace sentence-transformers."""
 
     def __init__(self, model_name: str, dimensions: int) -> None:
         _load_sentence_transformer()
@@ -120,7 +117,6 @@ def _load_model(model_name: str):
 
 
 class GoogleGeminiEmbeddingService:
-    """Embedding provider backed by Google Gemini API."""
 
     def __init__(self, api_key: str, model_name: str = "models/embedding-001", dimensions: int = 768) -> None:
         genai = _load_genai()
@@ -150,9 +146,6 @@ class GoogleGeminiEmbeddingService:
 
         try:
             values = await loop.run_in_executor(None, _call_gemini)
-            # Gemini embedding-001 is 768 dimensions. 
-            # If we need different dimensions, we might need to pad/truncate or use a different model.
-            # For now, we assume the user configured the correct dimensions in settings.
             if len(values) != self.dimensions:
                 logger.warning(
                     "gemini_embedding_dimension_mismatch",
@@ -190,7 +183,6 @@ def build_embedding_service(provider: str | None = None) -> EmbeddingService:
         try:
             base = GoogleGeminiEmbeddingService(
                 api_key=settings.gemini_api_key or "",
-                # Default to embedding-001 which is 768 dims, but user can override
                 model_name="models/embedding-001", 
                 dimensions=settings.embedding_dimensions,
             )

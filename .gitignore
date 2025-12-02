@@ -1,5 +1,63 @@
+# Python
 .venv/
-.env
+venv/
 __pycache__/
-*.pyc
-memory_layer.db
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+/tmp/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Testsprite test artifacts
+testsprite_tests/tmp/
+testsprite_tests/*.py
+testsprite_tests/*.html
+testsprite_tests/*.json
+!testsprite_tests/standard_prd.json
+!testsprite_tests/testsprite_backend_test_plan.json
+!testsprite_tests/testsprite-mcp-test-report.md
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

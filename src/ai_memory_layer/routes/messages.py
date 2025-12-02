@@ -24,7 +24,6 @@ async def create_message(
     session: AsyncSession = Depends(get_session),
 ) -> MessageResponse:
     result = await service.ingest(session, payload)
-    # Inline embeddings return 200; async queue returns 202 to signal eventual consistency
     response.status_code = (
         status.HTTP_202_ACCEPTED if service.settings.async_embeddings else status.HTTP_200_OK
     )

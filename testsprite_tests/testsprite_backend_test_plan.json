@@ -1,52 +1,52 @@
 [
   {
     "id": "TC001",
-    "title": "post message create message with inline embeddings",
-    "description": "Test the POST /v1/messages endpoint to verify that a message is stored successfully with inline embedding generation, returning a 200 status and the correct message response structure."
+    "title": "post v1 messages create message with inline embeddings",
+    "description": "Test the POST /v1/messages endpoint to verify that a message is stored successfully with inline embedding generation, and the response returns the stored message with embedding_status as completed."
   },
   {
     "id": "TC002",
-    "title": "post message create message with async embedding job",
-    "description": "Test the POST /v1/messages endpoint to verify that a message is stored and an embedding job is enqueued asynchronously, returning a 202 status and the correct message response structure."
+    "title": "post v1 messages create message with async embedding job",
+    "description": "Test the POST /v1/messages endpoint to verify that a message is stored successfully and an embedding job is enqueued asynchronously, returning a 202 response with embedding_status as pending."
   },
   {
     "id": "TC003",
-    "title": "get message retrieve message by valid id",
-    "description": "Test the GET /v1/messages/{message_id} endpoint to fetch a stored message by its UUID, expecting a 200 status and the correct message response data."
+    "title": "get v1 messages message by id success",
+    "description": "Test the GET /v1/messages/{message_id} endpoint to fetch a stored message by its UUID, verifying the response contains the correct message data and returns 200 status."
   },
   {
     "id": "TC004",
-    "title": "get message handle invalid message id format",
-    "description": "Test the GET /v1/messages/{message_id} endpoint with an invalid UUID format to verify that the API returns a 400 validation error."
+    "title": "get v1 messages message by id not found",
+    "description": "Test the GET /v1/messages/{message_id} endpoint with a non-existent UUID to verify that the API returns a 404 status indicating the message was not found."
   },
   {
     "id": "TC005",
-    "title": "get message handle message not found",
-    "description": "Test the GET /v1/messages/{message_id} endpoint with a valid UUID that does not exist in storage, expecting a 404 not found response."
+    "title": "get v1 memory search semantic search results",
+    "description": "Test the GET /v1/memory/search endpoint to verify that semantic search returns top-k relevant memories filtered by tenant and optional conversation, with results including similarity, decay, and importance scores."
   },
   {
     "id": "TC006",
-    "title": "get memory search perform semantic search with filters",
-    "description": "Test the GET /v1/memory/search endpoint to perform a semantic search for memories filtered by tenant_id and optional conversation_id, verifying that the top-k relevant results are returned with correct scoring and within performance criteria."
+    "title": "post v1 admin retention run apply retention policies",
+    "description": "Test the POST /v1/admin/retention/run endpoint to trigger retention policies for a tenant, verifying that messages are archived or deleted according to specified actions, and the response includes counts of archived and deleted messages."
   },
   {
     "id": "TC007",
-    "title": "post admin retention run apply retention policies",
-    "description": "Test the POST /v1/admin/retention/run endpoint to trigger retention policies for a tenant, verifying that messages are archived or deleted according to specified actions and that dry run mode works correctly."
+    "title": "get v1 admin health liveness check",
+    "description": "Test the GET /v1/admin/health endpoint to verify the service liveness and health status, ensuring the response includes status, database connectivity, and timestamp."
   },
   {
     "id": "TC008",
-    "title": "get admin health check service liveness",
-    "description": "Test the GET /v1/admin/health endpoint to verify that the service liveness and health status are reported correctly with expected fields."
+    "title": "get v1 admin readiness readiness check",
+    "description": "Test the GET /v1/admin/readiness endpoint to verify the service readiness status, ensuring the response indicates if the service is ready or degraded."
   },
   {
     "id": "TC009",
-    "title": "get admin readiness check service readiness",
-    "description": "Test the GET /v1/admin/readiness endpoint to verify that the service readiness status is reported correctly, including degraded states if applicable."
+    "title": "api key authentication enforcement",
+    "description": "Test that all API endpoints enforce API key authentication by sending requests without or with invalid API keys and verifying that the response status is 401 Unauthorized."
   },
   {
     "id": "TC010",
-    "title": "post message enforce api key authentication",
-    "description": "Test that all POST endpoints including /v1/messages and /v1/admin/retention/run enforce API key authentication, returning 401 Unauthorized for missing or invalid API keys."
+    "title": "rate limiting enforcement on api requests",
+    "description": "Test that the API enforces configured rate limits globally and per-tenant by sending requests exceeding the limit and verifying that the response status is 429 Too Many Requests with appropriate headers."
   }
 ]

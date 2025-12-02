@@ -41,13 +41,11 @@ def _build_engine() -> AsyncEngine:
 
 def _build_engine_for_url(url: str) -> AsyncEngine:
     settings = get_settings()
-    # Configure connection pooling for production
     engine_kwargs = {
         "echo": settings.sql_echo,
         "future": True,
-        "pool_pre_ping": True,  # Verify connections before using
+        "pool_pre_ping": True,
     }
-    # Only set pool settings for Postgres (not SQLite)
     if "postgresql" in url or "postgres" in url:
         engine_kwargs.update(
             {
@@ -73,14 +71,12 @@ _read_factory_cycle: cycle | None = None
     reraise=True,
 )
 async def _test_connection(engine: AsyncEngine) -> None:
-    """Test database connection with retry logic."""
     async with engine.connect() as connection:
         await connection.execute(text("SELECT 1"))
         await connection.commit()
 
 
 async def init_engine() -> None:
-    """Initialise global engine/session factory with connection retry."""
     global engine, SessionFactory, read_engines, read_session_factories, _read_factory_cycle  # noqa: PLW0603
     if engine is None:
         engine = _build_engine()
@@ -107,7 +103,6 @@ async def init_engine() -> None:
 async def _session_context(
     factory: async_sessionmaker[AsyncSession],
 ) -> AsyncIterator[AsyncSession]:
-    """Provide a session that always rolls back on error and closes cleanly."""
     session = factory()
     try:
         yield session
@@ -119,7 +114,6 @@ async def _session_context(
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
-    """Yield an async session."""
     if SessionFactory is None:
         await init_engine()
     assert SessionFactory is not None  # nosec - guarded above
@@ -128,7 +122,6 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 
 
 async def get_read_session() -> AsyncIterator[AsyncSession]:
-    """Yield an async session from a read replica when configured."""
     if SessionFactory is None:
         await init_engine()
     factory = _next_read_factory()
@@ -150,7 +143,6 @@ async def get_read_session() -> AsyncIterator[AsyncSession]:
 
 @asynccontextmanager
 async def session_scope() -> AsyncIterator[AsyncSession]:
-    """Context manager usable outside FastAPI dependency injection."""
     if SessionFactory is None:
         await init_engine()
     assert SessionFactory is not None  # nosec - guarded above
@@ -159,7 +151,6 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
 
 
 async def check_database_health() -> tuple[bool, float | None]:
-    """Ping the database and return (healthy, latency seconds)."""
     if engine is None:
         await init_engine()
     assert engine is not None  # nosec - guarded

@@ -28,3 +28,4 @@ USER app
 EXPOSE 8000
 
 CMD [".venv/bin/uvicorn", "ai_memory_layer.main:app", "--host", "0.0.0.0", "--port", "8000"]
+

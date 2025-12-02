@@ -145,7 +145,7 @@ class MessageService:
             items=results,
         )
         if cache_key:
-            await self.cache.set(cache_key, response.model_dump())
+            await self.cache.set(cache_key, response.model_dump(mode='json'))
         record_memory_search(
             tenant_id=params.tenant_id,
             result_count=len(results),
