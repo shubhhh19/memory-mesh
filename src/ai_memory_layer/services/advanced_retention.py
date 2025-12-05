@@ -161,15 +161,37 @@ class AdvancedRetentionService:
         
         elif rule.rule_type == "custom":
             # Custom rules can have complex conditions
-            # For now, support basic field filters
+            # Strictly validate and allow-list filter keys to prevent injection
+            allowed_filters = {"role", "min_importance", "max_importance"}
             if "filters" in conditions:
                 filters = conditions["filters"]
-                if "role" in filters:
-                    stmt = stmt.where(Message.role == filters["role"])
-                if "min_importance" in filters:
-                    stmt = stmt.where(Message.importance_score >= filters["min_importance"])
-                if "max_importance" in filters:
-                    stmt = stmt.where(Message.importance_score <= filters["max_importance"])
+                if not isinstance(filters, dict):
+                    return {"archived": 0, "deleted": 0, "moved_to_cold": 0}
+                
+                # Only process allowed filter keys
+                for key in allowed_filters:
+                    if key in filters:
+                        value = filters[key]
+                        if key == "role":
+                            # Validate role is a string
+                            if isinstance(value, str) and value in ("user", "assistant", "system"):
+                                stmt = stmt.where(Message.role == value)
+                        elif key == "min_importance":
+                            # Validate and cast to float
+                            try:
+                                min_val = float(value)
+                                if 0.0 <= min_val <= 1.0:
+                                    stmt = stmt.where(Message.importance_score >= min_val)
+                            except (ValueError, TypeError):
+                                pass
+                        elif key == "max_importance":
+                            # Validate and cast to float
+                            try:
+                                max_val = float(value)
+                                if 0.0 <= max_val <= 1.0:
+                                    stmt = stmt.where(Message.importance_score <= max_val)
+                            except (ValueError, TypeError):
+                                pass
         
         # Execute query
         result = await session.execute(stmt)
@@ -210,12 +232,19 @@ class AdvancedRetentionService:
         reason: str,
     ) -> int:
         """Archive messages."""
+        if not messages:
+            return 0
+        
+        # Fetch all existing archived message IDs in a single query to avoid N+1
+        message_ids = [msg.id for msg in messages]
+        archived_stmt = select(ArchivedMessage.id).where(ArchivedMessage.id.in_(message_ids))
+        archived_result = await session.execute(archived_stmt)
+        already_archived_ids = {row[0] for row in archived_result.all()}
+        
         count = 0
         for message in messages:
-            # Check if already archived
-            archived_stmt = select(ArchivedMessage).where(ArchivedMessage.id == message.id)
-            archived_result = await session.execute(archived_stmt)
-            if archived_result.scalar_one_or_none():
+            # Skip if already archived
+            if message.id in already_archived_ids:
                 continue
             
             archived = ArchivedMessage(

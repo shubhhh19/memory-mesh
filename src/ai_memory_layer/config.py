@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     require_redis_in_production: bool = Field(default=True, alias="REQUIRE_REDIS_IN_PRODUCTION")
     health_embed_check_enabled: bool = Field(default=False, alias="HEALTH_EMBED_CHECK_ENABLED")
     readiness_embed_timeout_seconds: float = Field(default=3.0, alias="READINESS_EMBED_TIMEOUT_SECONDS")
-    
+
     # JWT Authentication
     jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")

@@ -22,11 +22,13 @@ from ai_memory_layer.middleware import (
     SecurityHeadersMiddleware,
     TimeoutMiddleware,
 )
+from ai_memory_layer.middleware import VersioningMiddleware
 from ai_memory_layer.metrics import MetricsMiddleware, router as metrics_router
 from ai_memory_layer.rate_limit import RateLimitMiddleware
 from ai_memory_layer.routes import api_router
 from ai_memory_layer.scheduler import RetentionScheduler
 from ai_memory_layer.services.job_queue import EmbeddingJobQueue
+# Tracing is optional
 
 configure_logging()
 logger = get_logger(component="main")
@@ -140,6 +142,11 @@ async def lifespan(app: FastAPI):
         if read_engines:
             for replica in read_engines:
                 await replica.dispose()
+        try:
+            from ai_memory_layer.tracing import shutdown_tracing
+            shutdown_tracing()
+        except ImportError:
+            pass
         logger.info("application_shutdown_complete")
     except Exception as exc:
         logger.exception("application_shutdown_error", error=str(exc))
@@ -157,13 +164,40 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
     
+    # Initialize distributed tracing (if opentelemetry is available)
+    try:
+        from ai_memory_layer.tracing import init_tracing
+        init_tracing(app)
+    except ImportError:
+        logger.warning("opentelemetry_not_available", message="Distributed tracing disabled (opentelemetry not installed)")
+    
     # Add middlewares in order (last added = first executed)
+    app.add_middleware(VersioningMiddleware)
+    
+    # CORS configuration - secure by default
+    cors_origins = settings.allowed_origins
+    if "*" in cors_origins and settings.environment == "production":
+        # Don't allow wildcard in production
+        logger.warning(
+            "cors_wildcard_in_production",
+            message="CORS wildcard (*) is not allowed in production. Please specify exact origins.",
+        )
+        cors_origins = []
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,
+        allow_origins=cors_origins if "*" not in cors_origins else ["*"],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-API-Key",
+            "X-API-Version",
+            "X-Request-ID",
+        ],
+        expose_headers=["X-API-Version", "X-Request-ID"],
+        max_age=3600,  # Cache preflight for 1 hour
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.request_max_bytes)
