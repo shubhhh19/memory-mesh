@@ -449,7 +449,7 @@ export default function LandingPage({ onNavigateToDashboard }: LandingPageProps)
                                 </li>
                                 <li>
                                     <a href="https://shubhsoni.com/" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--text)] transition-colors">
-                                        <span>Creator's Website</span>
+                                        <span>Creator&apos;s Website</span>
                                     </a>
                                 </li>
                             </ul>

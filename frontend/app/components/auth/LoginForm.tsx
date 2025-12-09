@@ -38,7 +38,7 @@ export default function LoginForm() {
 
             toast.success('Logged in successfully');
             router.push('/dashboard');
-        } catch (error) {
+        } catch {
             toast.error('An error occurred during login');
         } finally {
             setLoading(false);
@@ -112,7 +112,7 @@ export default function LoginForm() {
             </button>
 
             <p className="text-center text-sm text-gray-600">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <a href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
                     Sign up
                 </a>

@@ -12,14 +12,19 @@ interface Message {
     content: string;
     created_at: string;
     importance_score: number | null;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
 }
 
 export default function ConversationView({ conversationId }: { conversationId: string | null }) {
     const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<{
+        total_messages: number;
+        user_messages: number;
+        assistant_messages: number;
+        avg_importance: number | null;
+    } | null>(null);
 
     useEffect(() => {
         if (!conversationId || !user?.tenant_id) return;
@@ -47,10 +52,12 @@ export default function ConversationView({ conversationId }: { conversationId: s
                 if (searchResponse.data?.items) {
                     // Sort by created_at
                     const sorted = searchResponse.data.items.sort(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (a: any, b: any) =>
                             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
                     );
                     setMessages(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         sorted.map((item: any) => ({
                             id: item.message_id,
                             role: item.role,
@@ -61,7 +68,7 @@ export default function ConversationView({ conversationId }: { conversationId: s
                         }))
                     );
                 }
-            } catch (error) {
+            } catch {
                 toast.error('Failed to load conversation');
             } finally {
                 setLoading(false);

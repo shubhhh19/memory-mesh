@@ -62,8 +62,8 @@ export default function AdminSection() {
         setHealthStatus(result.data);
         toast.success('Health check completed');
       }
-    } catch (error) {
-      console.error('Error checking health:', error);
+    } catch {
+      // Error already handled by toast
     } finally {
       setHealthLoading(false);
     }
@@ -93,8 +93,8 @@ export default function AdminSection() {
         const message = retentionData.dry_run ? 'Dry run completed' : 'Retention policy executed';
         toast.success(message);
       }
-    } catch (error) {
-      console.error('Error running retention:', error);
+    } catch {
+      // Error already handled by toast
     } finally {
       setRetentionLoading(false);
     }

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,7 +16,7 @@ class RetentionRuleCreate(BaseModel):
     rule_type: Literal["age", "importance", "conversation_age", "max_items", "custom"] = Field(
         ..., description="Type of retention rule"
     )
-    conditions: dict[str, any] = Field(
+    conditions: dict[str, Any] = Field(
         ..., description="Rule-specific conditions (e.g., {'days': 30, 'importance_threshold': 0.3})"
     )
     action: Literal["archive", "delete", "move_to_cold_storage"] = Field(
@@ -31,7 +31,7 @@ class RetentionRuleUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
-    conditions: dict[str, any] | None = None
+    conditions: dict[str, Any] | None = None
     action: Literal["archive", "delete", "move_to_cold_storage"] | None = None
     priority: int | None = Field(None, ge=1, le=1000)
     enabled: bool | None = None
@@ -47,7 +47,7 @@ class RetentionRuleResponse(BaseModel):
     name: str
     description: str | None
     rule_type: str
-    conditions: dict[str, any]
+    conditions: dict[str, Any]
     action: str
     priority: int
     enabled: bool

@@ -68,7 +68,7 @@ export default function RegisterForm() {
 
             toast.success('Account created successfully');
             router.push('/dashboard');
-        } catch (error) {
+        } catch {
             toast.error('An error occurred during registration');
         } finally {
             setLoading(false);

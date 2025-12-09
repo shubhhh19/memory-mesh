@@ -42,6 +42,7 @@ export default function DataExporter() {
             } else {
                 // CSV format
                 const headers = ['id', 'tenant_id', 'title', 'message_count', 'created_at', 'archived'];
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const rows = data.map((conv: any) => [
                     conv.id,
                     conv.tenant_id,
@@ -67,7 +68,7 @@ export default function DataExporter() {
             URL.revokeObjectURL(url);
 
             toast.success(`Exported ${data.length} conversations`);
-        } catch (error) {
+        } catch {
             toast.error('Export failed');
         } finally {
             setExporting(false);

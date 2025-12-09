@@ -1,5 +1,5 @@
 import toast from 'react-hot-toast';
-import { getAuthHeaders, getAccessToken, getRefreshToken, clearAuthTokens, setAuthTokens } from './auth';
+import { getAccessToken, getRefreshToken, clearAuthTokens, setAuthTokens } from './auth';
 
 interface ApiConfig {
     baseUrl: string;
@@ -110,6 +110,7 @@ export function setNavigationState(state: string): void {
 }
 
 // API fetch wrapper
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiRequest<T = any>(
     endpoint: string,
     options: RequestInit = {},
@@ -272,7 +273,7 @@ export const memoryMeshAPI = {
         conversation_id: string;
         role: 'user' | 'assistant' | 'system';
         content: string;
-        metadata?: Record<string, any>;
+        metadata?: Record<string, unknown>;
         importance_override?: number;
     }) => apiRequest('/v1/messages', {
         method: 'POST',
@@ -284,7 +285,7 @@ export const memoryMeshAPI = {
 
     updateMessage: (messageId: string, data: {
         content?: string;
-        metadata?: Record<string, any>;
+        metadata?: Record<string, unknown>;
         importance_override?: number;
         archived?: boolean;
     }) => apiRequest(`/v1/messages/${messageId}`, {
@@ -317,7 +318,7 @@ export const memoryMeshAPI = {
         conversation_id: string;
         tenant_id: string;
         title?: string;
-        metadata?: Record<string, any>;
+        metadata?: Record<string, unknown>;
     }) => apiRequest('/v1/conversations', {
         method: 'POST',
         body: JSON.stringify(data)
@@ -325,7 +326,7 @@ export const memoryMeshAPI = {
 
     updateConversation: (conversationId: string, data: {
         title?: string;
-        metadata?: Record<string, any>;
+        metadata?: Record<string, unknown>;
         archived?: boolean;
     }, tenantId: string) => apiRequest(`/v1/conversations/${conversationId}?tenant_id=${tenantId}`, {
         method: 'PUT',

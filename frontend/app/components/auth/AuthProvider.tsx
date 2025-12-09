@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 clearAuthTokens();
                 setUser(null);
             }
-        } catch (error) {
+        } catch {
             clearAuthTokens();
             setUser(null);
         } finally {
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = async () => {
         try {
             await memoryMeshAPI.logout();
-        } catch (error) {
+        } catch {
             // Ignore errors
         } finally {
             clearAuthTokens();

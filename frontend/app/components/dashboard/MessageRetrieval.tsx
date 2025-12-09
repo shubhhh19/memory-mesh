@@ -59,8 +59,8 @@ export default function MessageRetrieval() {
       } else if (result.status === 404) {
         toast.error('Message not found');
       }
-    } catch (error) {
-      console.error('Error retrieving message:', error);
+    } catch {
+      // Error already handled by toast
     } finally {
       setIsLoading(false);
     }

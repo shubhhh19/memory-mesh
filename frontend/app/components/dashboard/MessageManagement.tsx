@@ -112,8 +112,8 @@ export default function MessageManagement() {
           setRecentMessages(prev => [newMessage, ...prev.slice(0, 9)]);
         }
       }
-    } catch (error) {
-      console.error('Error storing message:', error);
+    } catch {
+      // Error already handled by toast
     } finally {
       setIsLoading(false);
     }

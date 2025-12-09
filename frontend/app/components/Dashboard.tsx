@@ -77,7 +77,7 @@ export default function Dashboard() {
                 return;
             }
 
-            const response = await fetch(`${config.baseUrl}/health`, {
+            const response = await fetch(`${config.baseUrl}/v1/admin/health`, {
                 method: 'GET',
                 headers: config.apiKey ? { 'x-api-key': config.apiKey } : {},
             });
@@ -87,7 +87,7 @@ export default function Dashboard() {
             } else {
                 setApiStatus('disconnected');
             }
-        } catch (error) {
+        } catch {
             setApiStatus('disconnected');
         }
     };

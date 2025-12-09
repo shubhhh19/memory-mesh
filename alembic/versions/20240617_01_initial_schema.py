@@ -35,12 +35,12 @@ def upgrade() -> None:
         sa.Column("conversation_id", sa.String(length=128), nullable=False, index=True),
         sa.Column("role", sa.String(length=16), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("metadata", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json")),
+        sa.Column("metadata", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json") if is_postgres else sa.text("'{}'")),
         sa.Column("importance_score", sa.Float()),
-        sa.Column("embedding", Vector(1536)),
+        sa.Column("embedding", Vector(1536) if is_postgres else sa.Text()),  # SQLite doesn't support Vector type
         sa.Column(
             "embedding_status",
-            sa.Enum("pending", "completed", "failed", name="embedding_status"),
+            sa.Enum("pending", "completed", "failed", name="embedding_status") if is_postgres else sa.String(length=16),
             nullable=False,
             server_default="pending",
         ),
@@ -49,14 +49,20 @@ def upgrade() -> None:
         sa.Column("archived", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
 
+    # Use appropriate UUID type for archived_messages
+    if is_postgres:
+        archived_id_column = sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True)
+    else:
+        archived_id_column = sa.Column("id", sa.String(length=36), primary_key=True)
+    
     op.create_table(
         "archived_messages",
-        sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True),
+        archived_id_column,
         sa.Column("tenant_id", sa.String(length=64), nullable=False),
         sa.Column("conversation_id", sa.String(length=128), nullable=False),
         sa.Column("role", sa.String(length=16), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("metadata", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json")),
+        sa.Column("metadata", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json") if is_postgres else sa.text("'{}'")),
         sa.Column("importance_score", sa.Float()),
         sa.Column("archived_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("archive_reason", sa.String(length=255), nullable=False),
@@ -74,28 +80,46 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
 
-    op.create_table(
-        "embedding_jobs",
-        sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True),
-        sa.Column("message_id", sa.Uuid(as_uuid=True), nullable=False),
-        sa.Column(
+    # Use appropriate UUID type for embedding_jobs
+    if is_postgres:
+        job_id_column = sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True)
+        job_message_id_column = sa.Column("message_id", sa.Uuid(as_uuid=True), nullable=False)
+        job_status_column = sa.Column(
             "status",
             sa.Enum("pending", "running", "completed", "failed", name="embedding_job_status"),
             nullable=False,
             server_default="pending",
-        ),
+        )
+    else:
+        job_id_column = sa.Column("id", sa.String(length=36), primary_key=True)
+        job_message_id_column = sa.Column("message_id", sa.String(length=36), nullable=False)
+        job_status_column = sa.Column(
+            "status",
+            sa.String(length=16),  # SQLite doesn't support ENUM
+            nullable=False,
+            server_default="pending",
+        )
+    
+    op.create_table(
+        "embedding_jobs",
+        job_id_column,
+        job_message_id_column,
+        job_status_column,
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("last_error", sa.Text()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_foreign_key(
-        "fk_embedding_jobs_message_id",
-        "embedding_jobs",
-        "messages",
-        ["message_id"],
-        ["id"],
-        ondelete="CASCADE",
-    )
+    
+    # Only create foreign key for PostgreSQL (SQLite doesn't support ALTER for constraints)
+    if is_postgres:
+        op.create_foreign_key(
+            "fk_embedding_jobs_message_id",
+            "embedding_jobs",
+            "messages",
+            ["message_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
 
 
 def downgrade() -> None:

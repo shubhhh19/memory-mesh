@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Icon } from '@iconify/react';
 import { memoryMeshAPI } from '@/lib/api';
 import { useAuth } from '../auth/AuthProvider';
@@ -24,7 +24,7 @@ export default function ConversationList({ onSelect }: { onSelect: (id: string) 
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
 
-    const loadConversations = async () => {
+    const loadConversations = useCallback(async () => {
         if (!user?.tenant_id) return;
 
         setLoading(true);
@@ -39,16 +39,16 @@ export default function ConversationList({ onSelect }: { onSelect: (id: string) 
                 setConversations(response.data.conversations);
                 setTotal(response.data.total);
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to load conversations');
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.tenant_id, page]);
 
     useEffect(() => {
         loadConversations();
-    }, [user?.tenant_id, page]);
+    }, [loadConversations]);
 
     const handleSelect = (id: string) => {
         setSelectedId(id);

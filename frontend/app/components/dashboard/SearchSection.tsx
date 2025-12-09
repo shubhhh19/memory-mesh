@@ -84,8 +84,8 @@ export default function SearchSection() {
       } else if (!result.error && result.data?.results?.length === 0) {
         toast.success('No results found for your search');
       }
-    } catch (error) {
-      console.error('Error searching memories:', error);
+    } catch {
+      // Error already handled by toast
     } finally {
       setIsLoading(false);
     }

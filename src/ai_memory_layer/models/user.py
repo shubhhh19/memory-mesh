@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -40,7 +40,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     tenant_id: Mapped[str | None] = mapped_column(String(64), index=True)
-    metadata: Mapped[dict[str, Any]] = mapped_column("metadata", Text, default=dict)
+    user_metadata: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -103,7 +103,7 @@ class Conversation(Base):
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     title: Mapped[str | None] = mapped_column(String(512))
-    metadata: Mapped[dict[str, Any]] = mapped_column("metadata", Text, default=dict)
+    user_metadata: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

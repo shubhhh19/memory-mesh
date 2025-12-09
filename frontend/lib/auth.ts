@@ -56,8 +56,8 @@ export function setAuthTokens(tokens: AuthTokens): void {
         localStorage.setItem(TOKEN_KEY, encrypt(tokens.access_token));
         localStorage.setItem(REFRESH_TOKEN_KEY, encrypt(tokens.refresh_token));
         localStorage.setItem(`${TOKEN_KEY}_expires`, (Date.now() + tokens.expires_in * 1000).toString());
-    } catch (error) {
-        console.error('Failed to save tokens:', error);
+    } catch {
+        // Failed to save tokens - localStorage may be disabled
     }
 }
 
@@ -106,8 +106,8 @@ export function setUser(user: User): void {
     
     try {
         localStorage.setItem(USER_KEY, encrypt(JSON.stringify(user)));
-    } catch (error) {
-        console.error('Failed to save user:', error);
+    } catch {
+        // Failed to save user - localStorage may be disabled
     }
 }
 
