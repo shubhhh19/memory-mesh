@@ -1,6 +1,6 @@
 # Integration Guide
 
-This guide shows you how to connect your application to the AI Memory Layer service.
+This guide shows you how to connect your application to the memorymesh service.
 
 ## Quick Start
 

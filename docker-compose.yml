@@ -41,7 +41,7 @@ services:
 
   worker:
     build: .
-    command: .venv/bin/aiml-worker
+    command: .venv/bin/memorymesh-worker
     environment:
       MEMORY_DATABASE_URL: postgresql+asyncpg://memory:memory@db:5432/memory_layer
       MEMORY_ENVIRONMENT: docker

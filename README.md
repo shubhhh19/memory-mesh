@@ -1,65 +1,62 @@
-# AI Memory Layer
+# memory mesh
 
-<div align="center">
+Backend service for storing and retrieving conversation messages with semantic search. Handles embeddings, importance scoring, and automatic retention policies.
 
-<img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
-<img src="https://img.shields.io/badge/version-1.0-orange" alt="Version" />
+## What It Does
 
-_A production-ready backend service for AI chatbot conversation memory with semantic search, importance scoring, and automatic retention policies_
+memorymesh stores conversation messages and lets you search through them using semantic similarity. It generates embeddings for messages, scores them by importance, and can automatically archive or delete old messages based on configurable policies.
 
-</div>
-
-## Table of Contents
-
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Installation](#installation)
-- [Screenshots](#screenshots)
-- [Interesting Parts During Build](#interesting-parts-during-build)
-- [Challenges and Solutions](#challenges-and-solutions)
-- [Future Updates](#future-updates)
-- [Author](#author)
-- [License](#license)
+The service exposes a REST API that your applications can call to store messages and search through past conversations. It's designed to work as a separate service that you deploy and connect to from your main application.
 
 ## Features
 
-- **Semantic Search**: Find relevant past messages using vector embeddings
-- **Importance Scoring**: Automatically prioritize messages by recency, role, and explicit importance
-- **Smart Retention**: Archive/delete old messages based on age and importance
-- **Rate Limiting**: Protect your API with built-in rate limiting
-- **Real Embeddings**: Google Gemini API integration for production-quality embeddings
-- **Background Processing**: Async embedding generation with job queue
-- **Monitoring**: Prometheus metrics and Grafana dashboards
-- **Multi-tenant Support**: Isolated data per tenant
+- Store conversation messages with automatic embedding generation
+- Semantic search using vector similarity
+- Importance scoring based on recency, role, and explicit importance
+- Automatic retention policies for archiving and deleting old messages
+- Rate limiting with Redis backend
+- Support for multiple embedding providers (Google Gemini, Sentence Transformers)
+- Background job queue for async embedding generation
+- Prometheus metrics endpoint
+- Multi-tenant data isolation
 
-## Technology Stack
+## Tech Stack
 
-### Backend
+**Backend:**
 - Python 3.11+
 - FastAPI
-- PostgreSQL with pgvector extension (or SQLite for development)
-- Redis (for caching and rate limiting)
-- Google Gemini API
-- SQLAlchemy (async ORM)
-- Alembic (database migrations)
+- PostgreSQL with pgvector extension (SQLite supported for development)
+- Redis for caching and rate limiting
+- SQLAlchemy async ORM
+- Alembic for database migrations
 
-### Infrastructure
-- Docker & Docker Compose
-- Prometheus & Grafana (monitoring)
-- Structured logging (structlog)
+**Infrastructure:**
+- Docker and Docker Compose
+- Prometheus for metrics
+- Grafana dashboards included
+- Structured JSON logging
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.11 or higher
+- PostgreSQL with pgvector extension (or SQLite for local development)
+- Redis (optional, but required for rate limiting and caching)
+- Google Gemini API key (if using Gemini embeddings)
+
+### Setup
+
 1. Clone the repository:
 ```bash
-git clone <your-repo>
+git clone https://github.com/shubhhh19/memory-layer.git
 cd memory-layer
 ```
 
-2. Create and activate virtual environment:
+2. Create a virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 ```
 
 3. Install dependencies:
@@ -67,134 +64,226 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
-4. Set up environment variables:
+4. Configure environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
 ```
 
-5. Initialize the database:
+Edit `.env` and set at minimum:
+- `MEMORY_DATABASE_URL` - PostgreSQL connection string
+- `MEMORY_API_KEYS` - Comma-separated list of API keys for authentication
+- `MEMORY_GEMINI_API_KEY` - If using Google Gemini embeddings
+- `MEMORY_REDIS_URL` - Redis connection string (required for rate limiting)
+
+5. Run database migrations:
 ```bash
 alembic upgrade head
 ```
 
-6. Run the application:
+6. Start the service:
 ```bash
-# Option 1: Using Docker Compose (Recommended)
+# Using Docker Compose
 docker compose up --build
-docker compose exec api alembic upgrade head
 
-# Option 2: Local Development
+# Or locally
 uvicorn ai_memory_layer.main:app --reload
 ```
 
-The API will be available at http://localhost:8000
-API docs at http://localhost:8000/docs
+The API will be available at http://localhost:8000. Interactive API documentation is at http://localhost:8000/docs.
 
-## Integration
+## Quick Start
 
-See [INTEGRATION.md](INTEGRATION.md) for detailed integration examples in Python, JavaScript, Go, and more.
+### Store a Message
 
-**Quick Example (Python):**
-```python
-import requests
-
-headers = {
-    "x-api-key": "your-api-key",
-    "Content-Type": "application/json"
-}
-
-# Store a message
-response = requests.post(
-    "http://localhost:8000/v1/messages",
-    headers=headers,
-    json={
+```bash
+curl -X POST http://localhost:8000/v1/messages \
+  -H "x-api-key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
     "tenant_id": "my-app",
-        "conversation_id": "user-123",
+    "conversation_id": "user-123",
     "role": "user",
-    "content": "I love Python programming"
-    }
-)
-
-# Search memories
-response = requests.get(
-    "http://localhost:8000/v1/memory/search",
-    headers=headers,
-    params={
-        "tenant_id": "my-app",
-        "query": "Python",
-        "top_k": 5
-    }
-)
+    "content": "I need help with Python"
+  }'
 ```
 
-## Screenshots
+### Search Messages
 
-_Add screenshots of your API documentation, monitoring dashboards, or example responses here_
+```bash
+curl "http://localhost:8000/v1/memory/search?tenant_id=my-app&query=Python&top_k=5" \
+  -H "x-api-key: your-api-key"
+```
 
-## Interesting Parts During Build
+### Check Health
 
-1. **Semantic Search Implementation**
-   - Implemented vector similarity search using pgvector extension
-   - Developed fallback mechanism for SQLite development environments
-   - Created hybrid ranking system combining similarity and importance scores
+```bash
+curl http://localhost:8000/v1/admin/health
+```
 
-2. **Embedding Service Architecture**
-   - Built pluggable embedding provider system (Google Gemini, Sentence Transformers, Mock)
-   - Implemented circuit breaker pattern for resilience
-   - Added async job queue for background embedding generation
+## API Overview
 
-3. **Retention System**
-   - Developed automatic retention policies based on age and importance
-   - Implemented scheduled background jobs for cleanup
-   - Created archive/delete workflow with configurable thresholds
+The service exposes these main endpoints:
 
-4. **Rate Limiting**
-   - Built Redis-backed rate limiting with global and per-tenant limits
-   - Implemented async rate limit checking to avoid blocking
-   - Added configurable rate limit strategies
+- `POST /v1/messages` - Store a new message
+- `GET /v1/messages/{message_id}` - Retrieve a message by ID
+- `GET /v1/memory/search` - Search for relevant messages
+- `GET /v1/admin/health` - Health check endpoint
+- `GET /v1/admin/readiness` - Readiness probe
+- `POST /v1/admin/retention/run` - Manually trigger retention policies
 
-## Challenges and Solutions
+All endpoints except health and readiness require an API key in the `x-api-key` header.
 
-1. **Challenge**: Vector search performance with large datasets
-   - **Solution**: Implemented candidate limiting and hybrid ranking to balance speed and relevance
-   - Added database indexes on tenant_id, conversation_id, and importance_score
+See [INTEGRATION.md](INTEGRATION.md) for detailed integration examples and client code in Python, JavaScript, and Go.
 
-2. **Challenge**: Embedding generation latency
-   - **Solution**: Built async job queue system for background processing
-   - Implemented caching layer for frequently accessed embeddings
-   - Added circuit breaker to fallback to mock embeddings on failures
+## Configuration
 
-3. **Challenge**: Multi-database compatibility
-   - **Solution**: Created abstraction layer for vector operations
-   - Implemented SQLite fallback for development without pgvector dependency
-   - Used Alembic migrations with conditional logic for different databases
+Key environment variables:
 
-4. **Challenge**: Rate limiting at scale
-   - **Solution**: Used Redis for distributed rate limiting
-   - Implemented async rate limit checks to avoid blocking request handling
-   - Added separate limits for global and per-tenant traffic
+**Database:**
+```
+MEMORY_DATABASE_URL=postgresql+asyncpg://user:pass@localhost/memory_layer
+```
 
-## Future Updates
+**Authentication:**
+```
+MEMORY_API_KEYS=key1,key2,key3
+```
 
-1. **Planned Features**
-   - Additional embedding providers (OpenAI, Cohere)
-   - GraphQL API endpoint
-   - Webhook notifications for retention events
-   - Advanced analytics dashboard
+**Embeddings:**
+```
+MEMORY_EMBEDDING_PROVIDER=google_gemini
+MEMORY_GEMINI_API_KEY=your-key-here
+MEMORY_EMBEDDING_DIMENSIONS=768
+```
 
-2. **Planned Improvements**
-   - Enhanced search filters (date ranges, metadata queries)
-   - Batch message ingestion API
-   - Export/import functionality
-   - Multi-region deployment support
+**Redis (for rate limiting and caching):**
+```
+MEMORY_REDIS_URL=redis://localhost:6379/0
+```
 
-## Author
+**Rate Limiting:**
+```
+MEMORY_GLOBAL_RATE_LIMIT=200/minute
+MEMORY_TENANT_RATE_LIMIT=120/minute
+```
 
-**Shubh Soni**
-- GitHub: [@shubhhh19](https://github.com/shubhhh19)
-- Email: sonishubh2004@gmail.com
+**Retention:**
+```
+MEMORY_RETENTION_MAX_AGE_DAYS=30
+MEMORY_RETENTION_IMPORTANCE_THRESHOLD=0.35
+MEMORY_RETENTION_SCHEDULE_SECONDS=86400
+```
+
+See the `.env.example` file for all available configuration options.
+
+## Architecture
+
+The service is structured as a standard FastAPI application:
+
+- Routes handle HTTP requests and validation
+- Services contain business logic (message ingestion, retrieval, retention)
+- Repositories handle database access
+- Models define the database schema
+
+Embeddings are generated either inline (synchronous) or via a background job queue (asynchronous). The job queue can run in-process or as a separate worker process.
+
+Search uses pgvector for vector similarity when available, with a fallback to SQLite for local development. Results are ranked by combining similarity scores, importance scores, and temporal decay.
+
+## Development
+
+### Running Tests
+
+```bash
+# All tests
+pytest
+
+# Unit tests only
+pytest tests/unit/
+
+# Integration tests
+pytest tests/integration/
+
+# With coverage
+pytest --cov=src/ai_memory_layer --cov-report=html
+```
+
+### Code Quality
+
+```bash
+# Format code
+ruff check --select I --fix .
+
+# Lint
+ruff check .
+
+# Type checking
+mypy src
+```
+
+### Database Migrations
+
+```bash
+# Create a new migration
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback
+alembic downgrade -1
+```
+
+## Deployment
+
+The service is containerized and can be deployed using Docker Compose or Kubernetes. The Dockerfile creates a non-root user and includes all dependencies.
+
+For production deployments:
+- Use PostgreSQL with pgvector extension
+- Configure Redis for rate limiting and caching
+- Set up proper API keys
+- Configure monitoring (Prometheus metrics are exposed at `/metrics`)
+- Set up log aggregation for structured JSON logs
+
+## Monitoring
+
+The service exposes Prometheus metrics at `/metrics`. Included metrics:
+- HTTP request counts and latency
+- Message ingestion counts
+- Search operation counts and durations
+- Embedding job durations
+- Rate limit hits
+
+Grafana dashboard configuration is included in `docs/monitoring/`.
+
+## How It Works
+
+When you store a message:
+1. The message is saved to the database
+2. An embedding is generated (inline or queued for background processing)
+3. An importance score is calculated based on recency, role, and any explicit importance override
+4. The message becomes searchable once the embedding is complete
+
+When you search:
+1. An embedding is generated for your query
+2. Vector similarity search finds candidate messages
+3. Results are ranked by combining similarity, importance, and temporal decay
+4. Top-k results are returned
+
+Retention policies run on a schedule (default daily) and archive or delete messages based on age and importance thresholds.
+
+## Limitations
+
+- Vector search requires pgvector for best performance. SQLite fallback works but is slower.
+- Rate limiting requires Redis. Without Redis, rate limiting won't work.
+- Embedding generation can be slow with large messages or high throughput. Use async mode for better performance.
+- The service doesn't handle message updates or deletions directly - use retention policies for cleanup.
 
 ## License
 
 MIT
+
+## Author
+
+Shubh Soni
+- GitHub: [@shubhhh19](https://github.com/shubhhh19)
+- Email: sonishubh2004@gmail.com

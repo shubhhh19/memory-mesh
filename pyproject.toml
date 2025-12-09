@@ -2,12 +2,15 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_memory_layer"]
+
 [project]
-name = "ai-memory-layer"
+name = "memorymesh"
 version = "0.1.0"
-description = "Deterministic memory backend for conversational AI systems."
+description = "Backend service for conversation memory with semantic search."
 authors = [
-  { name = "Memory Layer Team" }
+  { name = "Shubh Soni" }
 ]
 license = { text = "MIT" }
 readme = "README.md"
@@ -31,7 +34,15 @@ dependencies = [
   "sentence-transformers>=3.0.1",
   "slowapi>=0.1.9",
   "google-generativeai>=0.3.2",
-  "redis>=5.0.0"
+  "redis>=5.0.0",
+  "passlib[bcrypt]>=1.7.4",
+  "python-jose[cryptography]>=3.3.0",
+  "python-multipart>=0.0.9",
+  "opentelemetry-api>=1.24.0",
+  "opentelemetry-sdk>=1.24.0",
+  "opentelemetry-instrumentation-fastapi>=0.45b0",
+  "opentelemetry-exporter-jaeger>=1.24.0",
+  "websockets>=13.0"
 ]
 
 [project.optional-dependencies]
@@ -44,8 +55,8 @@ dev = [
 ]
 
 [project.scripts]
-aiml-api = "ai_memory_layer.main:run"
-aiml-worker = "ai_memory_layer.worker:run"
+memorymesh-api = "ai_memory_layer.main:run"
+memorymesh-worker = "ai_memory_layer.worker:run"
 
 [tool.ruff]
 line-length = 100

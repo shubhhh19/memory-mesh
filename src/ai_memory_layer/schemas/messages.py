@@ -40,6 +40,60 @@ class MessageCreate(BaseModel):
         return cleaned
 
 
+class MessageUpdate(BaseModel):
+    """Schema for updating a message."""
+
+    content: str | None = Field(None, min_length=1, max_length=100000)
+    metadata: dict[str, Any] | None = None
+    importance_override: float | None = Field(None, ge=0.0, le=1.0)
+    archived: bool | None = None
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _sanitize_metadata(cls, value: dict[str, Any] | None) -> dict[str, Any]:
+        if value is None:
+            return {}
+        try:
+            from ai_memory_layer.utils.sanitization import MetadataValidationError, sanitize_metadata
+            return sanitize_metadata(value)
+        except MetadataValidationError as exc:
+            raise ValueError(str(exc)) from exc
+
+
+class MessageBatchCreate(BaseModel):
+    """Schema for batch message creation."""
+
+    messages: list[MessageCreate] = Field(..., min_length=1, max_length=100)
+
+
+class MessageBatchUpdateItem(BaseModel):
+    """Schema for a single message update in batch."""
+
+    message_id: UUID
+    update: MessageUpdate
+
+
+class MessageBatchUpdate(BaseModel):
+    """Schema for batch message update."""
+
+    updates: list[MessageBatchUpdateItem] = Field(..., min_length=1, max_length=100)
+
+
+class MessageBatchDelete(BaseModel):
+    """Schema for batch message deletion."""
+
+    message_ids: list[UUID] = Field(..., min_length=1, max_length=100)
+
+
+class MessageBatchResponse(BaseModel):
+    """Schema for batch operation response."""
+
+    created: list[MessageResponse]
+    updated: list[MessageResponse]
+    deleted: list[UUID]
+    errors: list[dict[str, Any]]
+
+
 class MessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

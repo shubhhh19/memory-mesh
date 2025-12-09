@@ -1,4 +1,4 @@
-"""AI Memory Layer package."""
+"""memorymesh package."""
 
 import os
 from importlib.metadata import version

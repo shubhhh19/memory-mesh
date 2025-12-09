@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from ai_memory_layer import __version__
 from ai_memory_layer.config import get_settings
@@ -176,6 +178,19 @@ def create_app() -> FastAPI:
         app.add_middleware(MetricsMiddleware)
         app.include_router(metrics_router, tags=["metrics"])
     app.include_router(api_router)
+    
+    try:
+        import os
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static")
+        if os.path.exists(static_dir):
+            app.mount("/static", StaticFiles(directory=static_dir), name="static")
+            
+            @app.get("/")
+            async def root():
+                return FileResponse(os.path.join(static_dir, "index.html"))
+    except Exception:
+        pass
+    
     app.state.start_time = START_TIME
     return app
 

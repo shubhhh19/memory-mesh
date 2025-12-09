@@ -103,3 +103,32 @@ class EmbeddingJob(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class RetentionRule(Base):
+    """Advanced retention rule model for sophisticated lifecycle management."""
+
+    __tablename__ = "retention_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    rule_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        comment="age, importance, conversation_age, max_items, custom",
+    )
+    conditions: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    action: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        comment="archive, delete, move_to_cold_storage",
+    )
+    priority: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_applied: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

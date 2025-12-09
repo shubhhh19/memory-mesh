@@ -61,3 +61,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+
+.cursor/rules/kluster-code-verify.mdc
+.kluster

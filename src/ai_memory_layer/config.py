@@ -55,7 +55,7 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    app_name: str = "AI Memory Layer"
+    app_name: str = "memorymesh"
     environment: str = Field(default="local", description="Deployment environment name")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
@@ -116,6 +116,12 @@ class Settings(BaseSettings):
     require_redis_in_production: bool = Field(default=True, alias="REQUIRE_REDIS_IN_PRODUCTION")
     health_embed_check_enabled: bool = Field(default=False, alias="HEALTH_EMBED_CHECK_ENABLED")
     readiness_embed_timeout_seconds: float = Field(default=3.0, alias="READINESS_EMBED_TIMEOUT_SECONDS")
+    
+    # JWT Authentication
+    jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(default=30, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
     @classmethod
     def settings_customise_sources(
