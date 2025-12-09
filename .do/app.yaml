@@ -13,6 +13,7 @@ services:
     run_command: .venv/bin/uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port ${PORT:-8080}
     
     environment_slug: python
+    python_version: "3.12"
     instance_count: 1
     instance_size_slug: basic-xxs
     
