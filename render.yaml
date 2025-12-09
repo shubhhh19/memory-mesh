@@ -5,7 +5,7 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install poetry && poetry config virtualenvs.create false && poetry install --no-dev
     startCommand: uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /v1/admin/health
     envVars:
@@ -38,7 +38,7 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install poetry && poetry config virtualenvs.create false && poetry install --no-dev
     startCommand: python -m ai_memory_layer.worker
     envVars:
       - key: MEMORY_DATABASE_URL
