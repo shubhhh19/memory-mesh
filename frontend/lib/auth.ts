@@ -7,17 +7,24 @@ import CryptoJS from 'crypto-js';
 const TOKEN_KEY = 'memory-mesh-token';
 const REFRESH_TOKEN_KEY = 'memory-mesh-refresh-token';
 const USER_KEY = 'memory-mesh-user';
-const ENCRYPTION_KEY = 'memory-mesh-encryption-key'; // In production, derive from user password
+const ENCRYPTION_KEY = 'memory-mesh-encryption-key';
 
-// Simple encryption for localStorage (in production, use proper key derivation)
+let encryptionKeyCache: string | null = null;
+
 function getEncryptionKey(): string {
     if (typeof window === 'undefined') return ENCRYPTION_KEY;
     
-    let key = localStorage.getItem('_mm_ek');
+    if (encryptionKeyCache) {
+        return encryptionKeyCache;
+    }
+    
+    let key = sessionStorage.getItem('_mm_ek');
     if (!key) {
         key = CryptoJS.lib.WordArray.random(256/8).toString();
-        localStorage.setItem('_mm_ek', key);
+        sessionStorage.setItem('_mm_ek', key);
     }
+    
+    encryptionKeyCache = key;
     return key;
 }
 

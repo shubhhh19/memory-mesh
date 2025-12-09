@@ -67,35 +67,39 @@ export default function RequestInspector() {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[rgb(var(--surface-rgb)/0.55)] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
       <div className="p-4 border-b border-[var(--border)]">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-md"
-          aria-expanded={isExpanded}
-        >
-          <div className="flex items-center space-x-2">
+        <div className="w-full flex items-center justify-between">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex-1 flex items-center space-x-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-md"
+            aria-expanded={isExpanded}
+          >
             <Icon icon="material-symbols:history" className="w-5 h-5 text-[var(--muted-text)]" />
             <h3 className="font-medium text-[var(--text)]">Request History</h3>
             <span className="text-xs text-[var(--muted-text)]">({history.length} requests)</span>
-          </div>
+          </button>
           <div className="flex items-center space-x-2">
             {history.length > 0 && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearHistory();
-                }}
+                onClick={handleClearHistory}
                 type="button"
                 className="text-xs text-[var(--muted-text)] hover:text-[var(--text)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
               >
                 Clear
               </button>
             )}
-            <Icon 
-              icon={isExpanded ? 'material-symbols:expand-less' : 'material-symbols:expand-more'} 
-              className="w-5 h-5 text-[var(--muted-text)]" 
-            />
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              type="button"
+              className="text-[var(--muted-text)] hover:text-[var(--text)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
+              aria-label={isExpanded ? "Collapse" : "Expand"}
+            >
+              <Icon 
+                icon={isExpanded ? 'material-symbols:expand-less' : 'material-symbols:expand-more'} 
+                className="w-5 h-5" 
+              />
+            </button>
           </div>
-        </button>
+        </div>
       </div>
       
       <motion.div

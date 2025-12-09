@@ -33,8 +33,10 @@ bearer_scheme = HTTPBearer()
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserResponse:
+    """Register a new user. Rate limited by global middleware (5/minute recommended)."""
     """Register a new user."""
     user = await auth_service.create_user(
         session=session,
@@ -53,6 +55,7 @@ async def login(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Token:
+    """Authenticate user and return JWT tokens. Rate limited by global middleware (10/minute recommended)."""
     """Authenticate user and return JWT tokens."""
     user = await auth_service.authenticate_user(
         session=session,

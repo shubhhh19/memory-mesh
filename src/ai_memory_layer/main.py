@@ -176,13 +176,12 @@ def create_app() -> FastAPI:
     
     # CORS configuration - secure by default
     cors_origins = settings.allowed_origins
-    if "*" in cors_origins and settings.environment == "production":
-        # Don't allow wildcard in production
-        logger.warning(
-            "cors_wildcard_in_production",
-            message="CORS wildcard (*) is not allowed in production. Please specify exact origins.",
+    if "*" in cors_origins and settings.environment in ("production", "prod", "staging"):
+        # Fail fast in production/staging - wildcard is a security risk
+        raise ValueError(
+            f"CORS wildcard (*) is not allowed in {settings.environment} environment. "
+            "Please specify exact origins in MEMORY_ALLOWED_ORIGINS environment variable."
         )
-        cors_origins = []
     
     app.add_middleware(
         CORSMiddleware,

@@ -6,6 +6,7 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_memory_layer.database import get_session
@@ -14,6 +15,57 @@ from ai_memory_layer.security import get_current_user_from_token
 from ai_memory_layer.services.message_service import MessageService
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
+
+
+async def authenticate_websocket_user(
+    websocket: WebSocket,
+    token: str | None,
+    tenant_id: str,
+) -> User | None:
+    """
+    Authenticate WebSocket connection and verify tenant access.
+    
+    Returns:
+        User object if authenticated and authorized, None otherwise.
+        Closes the WebSocket connection if authentication fails.
+    """
+    # Validate tenant_id format to prevent injection
+    if not tenant_id or len(tenant_id) > 64 or not all(c.isalnum() or c in ('-', '_') for c in tenant_id):
+        await websocket.close(code=1008, reason="Invalid tenant ID format")
+        return None
+    
+    # Require authentication for tenant-specific endpoints
+    if not token:
+        await websocket.close(code=1008, reason="Authentication required")
+        return None
+    
+    # Verify token and tenant access
+    user = None
+    try:
+        async for session in get_session():
+            try:
+                user = await get_current_user_from_token(
+                    HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+                    session,
+                )
+                if user:
+                    # Verify tenant access
+                    if user.tenant_id and user.tenant_id != tenant_id:
+                        await websocket.close(code=1008, reason="Access denied to this tenant")
+                        return None
+                    break
+            except Exception:
+                pass
+            break
+    except Exception:
+        pass
+    
+    if not user:
+        await websocket.close(code=1008, reason="Invalid or expired token")
+        return None
+    
+    return user
+
 
 # Simple connection manager
 class ConnectionManager:
@@ -70,38 +122,10 @@ async def websocket_messages(
     token: str | None = None,
 ):
     """WebSocket endpoint for real-time message updates."""
-    # Require authentication for tenant-specific endpoints
-    if not token:
-        await websocket.close(code=1008, reason="Authentication required")
-        return
-    
-    user = None
-    try:
-        from fastapi.security import HTTPAuthorizationCredentials
-        from ai_memory_layer.database import get_session
-        from ai_memory_layer.security import get_current_user_from_token
-        
-        async for session in get_session():
-            try:
-                user = await get_current_user_from_token(
-                    HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
-                    session,
-                )
-                if user:
-                    # Verify tenant access
-                    if user.tenant_id and user.tenant_id != tenant_id:
-                        await websocket.close(code=1008, reason="Access denied to this tenant")
-                        return
-                    break
-            except Exception:
-                pass
-            break
-    except Exception:
-        pass
-    
+    # Authenticate and verify tenant access
+    user = await authenticate_websocket_user(websocket, token, tenant_id)
     if not user:
-        await websocket.close(code=1008, reason="Invalid or expired token")
-        return
+        return  # Connection already closed by authenticate_websocket_user
     
     await manager.connect(websocket, tenant_id)
     
@@ -143,9 +167,15 @@ async def websocket_messages(
 async def websocket_stream(
     websocket: WebSocket,
     tenant_id: str,
+    token: str | None = None,
     conversation_id: str | None = None,
 ):
     """WebSocket endpoint for streaming message search results."""
+    # Authenticate and verify tenant access
+    user = await authenticate_websocket_user(websocket, token, tenant_id)
+    if not user:
+        return  # Connection already closed by authenticate_websocket_user
+    
     await manager.connect(websocket, tenant_id)
     
     try:

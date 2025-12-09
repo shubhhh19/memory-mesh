@@ -416,7 +416,7 @@ export default function LandingPage({ onNavigateToDashboard }: LandingPageProps)
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="md:col-span-2">
                             <div className="flex items-center space-x-3 mb-4">
-                                <Image src="/logo-icon.png" alt="Memory Mesh Logo" width={32} height={32} className="w-8 h-8" />
+                                <img src="/logo-icon.png" alt="Memory Mesh Logo" width={32} height={32} className="w-8 h-8" />
                                 <h3 className="text-xl font-medium text-[var(--text)]">Memory Mesh</h3>
                             </div>
                             <p className="text-[var(--muted-text)] text-sm mb-6">
@@ -424,7 +424,7 @@ export default function LandingPage({ onNavigateToDashboard }: LandingPageProps)
                                 <span>Store, search, and manage conversational memories at scale.</span>
                             </p>
                             <p className="text-[var(--muted-text)] text-xs mb-2">
-                                <span>© 2024 Memory Mesh. Open source project.</span>
+                                <span>© 2025 Memory Mesh. Open source project.</span>
                             </p>
                             <p className="text-[var(--muted-text)] text-xs">
                                 <span>Made by </span>

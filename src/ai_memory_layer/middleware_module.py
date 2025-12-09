@@ -62,7 +62,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Reject requests that exceed the configured payload size."""
+    """Reject requests that exceed the configured payload size.
+    
+    Note: This middleware only checks requests with a Content-Length header.
+    For requests without Content-Length, size limiting should be handled
+    by the web server (nginx, etc.) before requests reach the application.
+    This avoids memory overhead from reading large request bodies.
+    """
 
     def __init__(self, app, max_bytes: int) -> None:
         super().__init__(app)
@@ -77,12 +83,10 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                     status_code=413,
                     media_type="application/json",
                 )
-        else:
-            body = await request.body()
-            if len(body) > self.max_bytes:
-                return Response(
-                    content='{"detail":"Request too large"}',
-                    status_code=413,
-                    media_type="application/json",
-                )
+        # For requests without content-length header, we skip the check here
+        # to avoid reading the entire body into memory. In production, configure
+        # your web server (nginx, Apache, etc.) to enforce size limits at the
+        # edge, which is more efficient and prevents large payloads from reaching
+        # the application layer.
+        
         return await call_next(request)

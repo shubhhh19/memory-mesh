@@ -218,6 +218,24 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return cached settings instance."""
     settings = Settings()
+    
+    # Validate JWT secret key security in production/staging
+    if settings.environment in ("production", "prod", "staging"):
+        if settings.jwt_secret_key == "change-me-in-production" or len(settings.jwt_secret_key) < 32:
+            raise ValueError(
+                f"JWT_SECRET_KEY must be set to a secure random value (minimum 32 characters) "
+                f"in {settings.environment} environment. "
+                f"Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
+    elif settings.jwt_secret_key == "change-me-in-production":
+        import warnings
+        warnings.warn(
+            "Using default JWT_SECRET_KEY. This is insecure for production. "
+            "Set JWT_SECRET_KEY environment variable to a secure random value (minimum 32 characters).",
+            UserWarning,
+            stacklevel=2
+        )
+    
     if _OVERRIDES:
         return settings.model_copy(update=_OVERRIDES)
     return settings
