@@ -16,6 +16,7 @@ from ai_memory_layer.schemas.auth import (
     APIKeyListResponse,
     APIKeyResponse,
     LoginRequest,
+    OAuthCallbackRequest,
     PasswordChange,
     Token,
     UserCreate,
@@ -299,3 +300,184 @@ async def delete_api_key(
     
     return {"message": "API key deleted successfully"}
 
+
+@router.post("/oauth/callback", response_model=Token)
+async def oauth_callback(
+    callback_data: OAuthCallbackRequest,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Token:
+    """Handle OAuth callback and create/login user."""
+    import httpx
+    from ai_memory_layer.config import get_settings
+    
+    settings = get_settings()
+    
+    # Exchange code for access token based on provider
+    if callback_data.provider == "google":
+        token_url = "https://oauth2.googleapis.com/token"
+        user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        
+        client_id = settings.google_client_id
+        client_secret = settings.google_client_secret
+        
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google OAuth not configured"
+            )
+        
+        async with httpx.AsyncClient() as client:
+            # Exchange code for token
+            token_response = await client.post(
+                token_url,
+                data={
+                    "code": callback_data.code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": settings.oauth_redirect_url,
+                    "grant_type": "authorization_code",
+                }
+            )
+            
+            if token_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to exchange authorization code"
+                )
+            
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            
+            # Get user info
+            user_response = await client.get(
+                user_info_url,
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            if user_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to get user information"
+                )
+            
+            user_info = user_response.json()
+            
+    elif callback_data.provider == "github":
+        token_url = "https://github.com/login/oauth/access_token"
+        user_info_url = "https://api.github.com/user"
+        
+        client_id = settings.github_client_id
+        client_secret = settings.github_client_secret
+        
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="GitHub OAuth not configured"
+            )
+        
+        async with httpx.AsyncClient() as client:
+            # Exchange code for token
+            token_response = await client.post(
+                token_url,
+                data={
+                    "code": callback_data.code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": settings.oauth_redirect_url,
+                },
+                headers={"Accept": "application/json"}
+            )
+            
+            if token_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to exchange authorization code"
+                )
+            
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            
+            # Get user info
+            user_response = await client.get(
+                user_info_url,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/json"
+                }
+            )
+            
+            if user_response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to get user information"
+                )
+            
+            user_info = user_response.json()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported OAuth provider: {callback_data.provider}"
+        )
+    
+    # Extract user information based on provider
+    if callback_data.provider == "google":
+        oauth_id = user_info.get("id")
+        email = user_info.get("email")
+        name = user_info.get("name", "")
+        avatar_url = user_info.get("picture")
+        username = email.split("@")[0] if email else f"user_{oauth_id}"
+    else:  # github
+        oauth_id = str(user_info.get("id"))
+        email = user_info.get("email")
+        name = user_info.get("name") or user_info.get("login", "")
+        avatar_url = user_info.get("avatar_url")
+        username = user_info.get("login", f"user_{oauth_id}")
+    
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email not provided by OAuth provider"
+        )
+    
+    # Get or create user
+    user = await auth_service.get_or_create_oauth_user(
+        session=session,
+        provider=callback_data.provider,
+        oauth_id=oauth_id,
+        email=email,
+        username=username,
+        full_name=name,
+        avatar_url=avatar_url,
+    )
+    
+    # Create tokens
+    token_data_dict = {
+        "sub": str(user.id),
+        "email": user.email,
+        "username": user.username,
+        "role": user.role.value,
+        "tenant_id": user.tenant_id or "",
+    }
+    
+    access_token_str = create_access_token(data=token_data_dict)
+    refresh_token_str = create_refresh_token(data=token_data_dict)
+    
+    # Create session
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    await auth_service.create_session(
+        session=session,
+        user_id=user.id,
+        token=refresh_token_str,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        expires_delta=timedelta(days=7),
+    )
+    
+    return Token(
+        access_token=access_token_str,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=refresh_token_str,
+    )

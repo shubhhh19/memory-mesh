@@ -1,0 +1,51 @@
+services:
+  # FastAPI Backend
+  - type: web
+    name: memory-mesh-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /v1/admin/health
+    envVars:
+      - key: MEMORY_DATABASE_URL
+        sync: false
+      - key: MEMORY_REDIS_URL
+        sync: false
+      - key: MEMORY_ASYNC_EMBEDDINGS
+        value: "true"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_REDIRECT_URL
+        sync: false
+      - key: MEMORY_ALLOWED_ORIGINS
+        value: "*"
+      - key: MEMORY_ENVIRONMENT
+        value: "production"
+
+  # Background Worker
+  - type: worker
+    name: memory-mesh-worker
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ai_memory_layer.worker
+    envVars:
+      - key: MEMORY_DATABASE_URL
+        sync: false
+      - key: MEMORY_REDIS_URL
+        sync: false
+      - key: MEMORY_ASYNC_EMBEDDINGS
+        value: "true"
+      - key: MEMORY_ENVIRONMENT
+        value: "production"

@@ -34,12 +34,18 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Nullable for OAuth users
     full_name: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(SQLEnum(UserRole), default=UserRole.USER, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     tenant_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    
+    # OAuth fields
+    oauth_provider: Mapped[str | None] = mapped_column(String(32), index=True)  # 'google', 'github', or None
+    oauth_id: Mapped[str | None] = mapped_column(String(255), index=True)  # Provider's user ID
+    avatar_url: Mapped[str | None] = mapped_column(String(512))  # Profile picture URL
+    
     user_metadata: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

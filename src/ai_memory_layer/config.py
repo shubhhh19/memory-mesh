@@ -123,6 +123,17 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
+    # OAuth Configuration
+    google_client_id: str | None = Field(default=None, alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str | None = Field(default=None, alias="GOOGLE_CLIENT_SECRET")
+    github_client_id: str | None = Field(default=None, alias="GITHUB_CLIENT_ID")
+    github_client_secret: str | None = Field(default=None, alias="GITHUB_CLIENT_SECRET")
+    oauth_redirect_url: str = Field(
+        default="http://localhost:3000/api/auth/callback",
+        alias="OAUTH_REDIRECT_URL"
+    )
+
+
     @classmethod
     def settings_customise_sources(
         cls,

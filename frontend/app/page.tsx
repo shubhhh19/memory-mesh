@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import NavigationTabs from './components/NavigationTabs';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import { getNavigationState } from '@/lib/api';
 
 export default function Home() {
@@ -36,6 +37,17 @@ export default function Home() {
     }, []);
 
     const handleNavigateToDashboard = () => {
+        // Check if user is authenticated
+        const { isAuthenticated } = require('@/lib/auth');
+
+        if (!isAuthenticated()) {
+            // Redirect to login if not authenticated
+            if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+            }
+            return;
+        }
+
         setActiveTab('dashboard');
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
@@ -66,7 +78,9 @@ export default function Home() {
                 {activeTab === 'landing' ? (
                     <LandingPage onNavigateToDashboard={handleNavigateToDashboard} />
                 ) : (
-                    <Dashboard />
+                    <ProtectedRoute>
+                        <Dashboard />
+                    </ProtectedRoute>
                 )}
             </main>
 

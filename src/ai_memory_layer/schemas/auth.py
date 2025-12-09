@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
+class OAuthProvider(str, Enum):
+    """OAuth provider enumeration."""
+    
+    GOOGLE = "google"
+    GITHUB = "github"
 
 
 class UserCreate(BaseModel):
@@ -183,4 +191,19 @@ class APIKeyListResponse(BaseModel):
     expires_at: datetime | None
     is_active: bool
     created_at: datetime
+
+
+class OAuthLoginRequest(BaseModel):
+    """Schema for OAuth login initiation."""
+    
+    provider: OAuthProvider
+    redirect_uri: str = Field(..., description="Frontend redirect URI after OAuth completion")
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Schema for OAuth callback handling."""
+    
+    provider: OAuthProvider
+    code: str = Field(..., description="Authorization code from OAuth provider")
+    state: str | None = Field(None, description="State parameter for CSRF protection")
 

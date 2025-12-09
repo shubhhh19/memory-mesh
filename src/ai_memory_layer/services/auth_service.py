@@ -198,6 +198,10 @@ class AuthService:
         if not user:
             return None
         
+        # OAuth users don't have passwords
+        if not user.hashed_password:
+            return None
+        
         if not verify_password(password, user.hashed_password):
             return None
         
@@ -331,4 +335,75 @@ class AuthService:
         result = await session.execute(stmt)
         await session.commit()
         return result.rowcount or 0
+
+    async def get_or_create_oauth_user(
+        self,
+        session: AsyncSession,
+        provider: str,
+        oauth_id: str,
+        email: str,
+        username: str,
+        full_name: str | None = None,
+        avatar_url: str | None = None,
+    ) -> User:
+        """Get or create a user from OAuth provider data."""
+        # Check if user exists with this OAuth provider
+        stmt = select(User).where(
+            User.oauth_provider == provider,
+            User.oauth_id == oauth_id
+        )
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if user:
+            # Update user info from OAuth
+            user.full_name = full_name or user.full_name
+            user.avatar_url = avatar_url or user.avatar_url
+            user.last_login = datetime.now(timezone.utc)
+            await session.commit()
+            await session.refresh(user)
+            return user
+        
+        # Check if user exists with this email (link accounts)
+        stmt = select(User).where(User.email == email)
+        result = await session.execute(stmt)
+        existing_user = result.scalar_one_or_none()
+        
+        if existing_user:
+            # Link OAuth to existing account
+            existing_user.oauth_provider = provider
+            existing_user.oauth_id = oauth_id
+            existing_user.avatar_url = avatar_url or existing_user.avatar_url
+            existing_user.last_login = datetime.now(timezone.utc)
+            await session.commit()
+            await session.refresh(existing_user)
+            return existing_user
+        
+        # Create new user
+        # Ensure unique username
+        base_username = username
+        counter = 1
+        while True:
+            stmt = select(User).where(User.username == username)
+            result = await session.execute(stmt)
+            if not result.scalar_one_or_none():
+                break
+            username = f"{base_username}{counter}"
+            counter += 1
+        
+        user = User(
+            email=email,
+            username=username,
+            hashed_password=None,  # OAuth users don't have password
+            full_name=full_name,
+            oauth_provider=provider,
+            oauth_id=oauth_id,
+            avatar_url=avatar_url,
+            is_verified=True,  # OAuth emails are pre-verified
+            role=UserRole.USER,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
 
