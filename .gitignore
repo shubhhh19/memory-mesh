@@ -1,67 +1,56 @@
-# Python
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
+!testsprite_tests/standard_prd.json
+!testsprite_tests/testsprite-mcp-test-report.md
+!testsprite_tests/testsprite_backend_test_plan.json
 # Database
+# Docker
+# Environment variables
+# IDE
+# Logs
+# OS
+# Python
+# Temporary files
+# Test artifacts
+# Testsprite test artifacts
+*$py.class
+*.bak
 *.db
+*.egg-info/
+*.log
+*.py[cod]
+*.so
 *.sqlite
 *.sqlite3
-
-# IDE
-.vscode/
-.idea/
-*.swp
 *.swo
+*.swp
+*.tmp
 *~
 .DS_Store
-
-# Logs
-*.log
-logs/
-/tmp/
-
-# Test artifacts
-.pytest_cache/
+.Python
 .coverage
-htmlcov/
-.tox/
+.cursor/rules/kluster-code-verify.mdc
+.dockerignore
+.env
+.env.*.local
+.env.local
+.idea/
+.kluster
 .mypy_cache/
+.pytest_cache/
 .ruff_cache/
-
-# Testsprite test artifacts
-testsprite_tests/tmp/
-testsprite_tests/*.py
+.tox/
+.venv/
+.vscode/
+/tmp/
+Thumbs.db
+__pycache__/
+build/
+dist/
+frontend/node_modules/
+htmlcov/
+logs/
 testsprite_tests/*.html
 testsprite_tests/*.json
-!testsprite_tests/standard_prd.json
-!testsprite_tests/testsprite_backend_test_plan.json
-!testsprite_tests/testsprite-mcp-test-report.md
-
-# Docker
-.dockerignore
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.bak
-*.swp
-
-
-.cursor/rules/kluster-code-verify.mdc
-.kluster
+testsprite_tests/*.py
+testsprite_tests/tmp/
+venv/
