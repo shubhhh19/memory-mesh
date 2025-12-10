@@ -5,8 +5,8 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install poetry && poetry config virtualenvs.create false && poetry install --only main --no-root
-    startCommand: PYTHONPATH=/opt/render/project/src:$PYTHONPATH uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd /opt/render/project/src && pip install -e ..
+    startCommand: cd /opt/render/project/src && uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /v1/admin/health
     envVars:
       - key: MEMORY_DATABASE_URL
@@ -31,21 +31,6 @@ services:
         value: "*"
       - key: MEMORY_ENVIRONMENT
         value: "production"
-
-  # Background Worker
-  - type: worker
-    name: memory-mesh-worker
-    env: python
-    region: oregon
-    plan: free
-    buildCommand: pip install poetry && poetry config virtualenvs.create false && poetry install --no-dev
-    startCommand: python -m ai_memory_layer.worker
-    envVars:
-      - key: MEMORY_DATABASE_URL
-        sync: false
-      - key: MEMORY_REDIS_URL
-        sync: false
       - key: MEMORY_ASYNC_EMBEDDINGS
-        value: "true"
-      - key: MEMORY_ENVIRONMENT
-        value: "production"
+        value: "false"
+
