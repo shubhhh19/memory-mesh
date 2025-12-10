@@ -5,8 +5,8 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: cd /opt/render/project/src && pip install -e ..
-    startCommand: cd /opt/render/project/src && uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -e .
+    startCommand: cd src && python -m uvicorn ai_memory_layer.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /v1/admin/health
     envVars:
       - key: MEMORY_DATABASE_URL
